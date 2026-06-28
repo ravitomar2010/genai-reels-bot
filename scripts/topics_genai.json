@@ -1,0 +1,426 @@
+{
+  "series_title": "Gen AI Master Series",
+  "handle": "@agentwave.ai",
+  "topics": [
+    {
+      "id": 1,
+      "title": "What is Prompt Engineering?",
+      "hook": "Most people use AI wrong.\nHere's the skill that changes everything 👇",
+      "emoji": "🧠",
+      "points": [
+        "Prompts are instructions you give to AI",
+        "Better prompts = dramatically better results",
+        "It's the #1 skill for working with AI in 2025",
+        "Anyone can learn it in a weekend"
+      ],
+      "hashtags": "#PromptEngineering #GenAI #AITips #ArtificialIntelligence #LearnAI #ChatGPT #Claude #AITools",
+      "cta": "Follow for daily AI tips that actually work!"
+    },
+    {
+      "id": 2,
+      "title": "5 Prompting Mistakes You're Making",
+      "hook": "Your AI answers are bad.\nNot because of the AI — because of THIS 👇",
+      "emoji": "⚠️",
+      "points": [
+        "Being too vague (\"write something nice\")",
+        "No context about your audience or goal",
+        "Not specifying the output format",
+        "Forgetting to set the tone or style"
+      ],
+      "hashtags": "#AIPrompts #PromptTips #GenAI #AIHacks #ChatGPT #AIProductivity #LearnAI #Automation",
+      "cta": "Save this post to avoid these mistakes!"
+    },
+    {
+      "id": 3,
+      "title": "Claude vs ChatGPT: The Real Difference",
+      "hook": "ChatGPT or Claude?\nHere's what nobody tells you 👇",
+      "emoji": "⚔️",
+      "points": [
+        "Claude: longer context, better reasoning",
+        "ChatGPT: bigger plugin ecosystem",
+        "Claude excels at documents & analysis",
+        "Both are great — use the right one"
+      ],
+      "hashtags": "#Claude #ChatGPT #AIComparison #GenAI #AITools #Anthropic #OpenAI #AITips",
+      "cta": "Which AI do you use? Comment below!"
+    },
+    {
+      "id": 4,
+      "title": "What is RAG in AI?",
+      "hook": "AI hallucinating facts is SCARY.\nRAG fixes that — here's how 👇",
+      "emoji": "📚",
+      "points": [
+        "RAG = Retrieval Augmented Generation",
+        "AI searches your documents before answering",
+        "Massively reduces hallucinations",
+        "Powers most enterprise AI today"
+      ],
+      "hashtags": "#RAG #AITechnology #GenAI #LLM #AIEngineering #MachineLearning #AITips #TechEducation",
+      "cta": "Follow for more AI concepts explained simply!"
+    },
+    {
+      "id": 5,
+      "title": "Build an AI Agent in 5 Steps",
+      "hook": "AI agents will replace many jobs.\nHere's how they actually work 👇",
+      "emoji": "🤖",
+      "points": [
+        "Step 1: Define the agent's goal clearly",
+        "Step 2: Give it tools (search, code, email)",
+        "Step 3: Set up memory & context",
+        "Step 4: Add safety guardrails"
+      ],
+      "hashtags": "#AIAgents #AgenticAI #GenAI #AIAutomation #Claude #ClaudeCode #AITips #FutureOfWork",
+      "cta": "Want a full tutorial? Comment 'AGENT' below!"
+    },
+    {
+      "id": 6,
+      "title": "What is an LLM?",
+      "hook": "Everyone talks about LLMs.\nBut what ARE they? 👇",
+      "emoji": "🔮",
+      "points": [
+        "LLM = Large Language Model",
+        "Trained on billions of text examples",
+        "Predicts the most likely next word",
+        "This simple trick creates 'intelligence'"
+      ],
+      "hashtags": "#LLM #AIExplained #GenAI #MachineLearning #DeepLearning #AITips #TechEducation #Transformer",
+      "cta": "Follow to understand AI from scratch!"
+    },
+    {
+      "id": 7,
+      "title": "Top 5 Free AI Tools in 2025",
+      "hook": "Stop paying for AI tools.\nHere are 5 FREE ones that are incredible 👇",
+      "emoji": "🆓",
+      "points": [
+        "Claude.ai — best for long documents",
+        "Perplexity — AI-powered search engine",
+        "Gamma.app — AI presentations in seconds",
+        "Napkin.ai — turns text into visuals"
+      ],
+      "hashtags": "#FreeAITools #AITools #GenAI #Productivity #AIHacks #ChatGPT #Claude #TechTips",
+      "cta": "Save this list! Share with someone who needs it!"
+    },
+    {
+      "id": 8,
+      "title": "How to Use AI for Content Creation",
+      "hook": "I create 30 days of content\nin 2 hours using AI. Here's how 👇",
+      "emoji": "✍️",
+      "points": [
+        "Use AI to brainstorm 100 ideas in 5 min",
+        "Turn 1 idea into 10 different formats",
+        "Generate captions, scripts & hooks",
+        "Always edit & add your human touch"
+      ],
+      "hashtags": "#AIContentCreation #ContentCreator #GenAI #ContentStrategy #InstagramGrowth #AITools #CreatorEconomy",
+      "cta": "Follow for the full content creation playbook!"
+    },
+    {
+      "id": 9,
+      "title": "What is Fine-Tuning in AI?",
+      "hook": "Generic AI vs Custom AI.\nThe difference is fine-tuning — here's why 👇",
+      "emoji": "🎯",
+      "points": [
+        "Fine-tuning teaches AI your specific style",
+        "Train on YOUR data = AI that sounds like you",
+        "Companies use this for customer service AI",
+        "Now accessible to small businesses too"
+      ],
+      "hashtags": "#FineTuning #AITraining #GenAI #MachineLearning #CustomAI #AIBusiness #LLM #TechTips",
+      "cta": "Follow for practical AI business strategies!"
+    },
+    {
+      "id": 10,
+      "title": "AI Automation: Save 4 Hours Daily",
+      "hook": "I automated 4 hours of my day with AI.\nHere's my exact system 👇",
+      "emoji": "⚡",
+      "points": [
+        "Email triage: AI drafts replies for you",
+        "Meeting notes: AI transcribes & summarizes",
+        "Research: AI reads 50 pages in seconds",
+        "Reporting: AI writes the first draft"
+      ],
+      "hashtags": "#AIAutomation #Productivity #GenAI #WorkSmarter #AITools #AutomationTips #FutureOfWork #AIHacks",
+      "cta": "Comment what you want to automate first!"
+    },
+    {
+      "id": 11,
+      "title": "Understanding AI Tokens",
+      "hook": "AI has a memory limit.\nTokens explain everything about AI limits 👇",
+      "emoji": "🪙",
+      "points": [
+        "Tokens = chunks of text AI processes",
+        "~4 characters = 1 token on average",
+        "Context window = how much AI can 'remember'",
+        "More tokens = more expensive API calls"
+      ],
+      "hashtags": "#AITokens #LLM #GenAI #AIExplained #TechEducation #MachineLearning #APITips #AIForBeginners",
+      "cta": "Follow to master the technical side of AI!"
+    },
+    {
+      "id": 12,
+      "title": "How to Write a Perfect System Prompt",
+      "hook": "System prompts are AI's personality.\nHere's how the pros write them 👇",
+      "emoji": "⚙️",
+      "points": [
+        "Define the AI's role & persona clearly",
+        "Set boundaries on what it should/shouldn't do",
+        "Include response format instructions",
+        "Add examples of ideal outputs"
+      ],
+      "hashtags": "#SystemPrompt #PromptEngineering #GenAI #AITips #ClaudeAI #ChatGPT #AIHacks #LLMEngineering",
+      "cta": "Save this! System prompts change everything."
+    },
+    {
+      "id": 13,
+      "title": "AI for Students: Study Smarter",
+      "hook": "Students who use AI correctly\nget better grades in half the time 👇",
+      "emoji": "📖",
+      "points": [
+        "Use AI to explain concepts 10 different ways",
+        "Generate practice questions on any topic",
+        "Summarize textbooks into key points",
+        "Create personalized study plans"
+      ],
+      "hashtags": "#AIForStudents #StudyTips #GenAI #Education #AILearning #StudentLife #AITools #LearnWithAI",
+      "cta": "Share with a student who needs this!"
+    },
+    {
+      "id": 14,
+      "title": "What is MCP (Model Context Protocol)?",
+      "hook": "MCP is the USB-C of AI.\nEvery developer needs to know this 👇",
+      "emoji": "🔌",
+      "points": [
+        "MCP lets AI connect to any external tool",
+        "One protocol — works with all AI models",
+        "Give AI access to your files, apps & APIs",
+        "Built by Anthropic, now an open standard"
+      ],
+      "hashtags": "#MCP #ModelContextProtocol #AIAgents #Claude #AnthropicAI #AIIntegration #TechNews #GenAI",
+      "cta": "Follow for the latest in AI development!"
+    },
+    {
+      "id": 15,
+      "title": "Chain of Thought Prompting",
+      "hook": "This one prompting trick\nmakes AI 10x smarter at reasoning 👇",
+      "emoji": "🔗",
+      "points": [
+        "Ask AI to think step by step",
+        "Forces the model to reason before answering",
+        "Dramatically reduces errors on complex tasks",
+        "Just add: 'Think step by step' to any prompt"
+      ],
+      "hashtags": "#ChainOfThought #PromptEngineering #GenAI #AITips #Reasoning #LLM #AIHacks #BetterPrompts",
+      "cta": "Try this NOW — you'll be amazed at the results!"
+    },
+    {
+      "id": 16,
+      "title": "AI Voice Agents: The Future of Customer Service",
+      "hook": "Your next customer support call\nwill be with an AI. Here's how 👇",
+      "emoji": "📞",
+      "points": [
+        "AI voice agents handle calls 24/7",
+        "They understand natural speech perfectly",
+        "Can book appointments, answer questions",
+        "Cost 90% less than human agents"
+      ],
+      "hashtags": "#VoiceAI #AIAgents #CustomerService #GenAI #AIBusiness #FutureOfWork #AIAutomation #TechTrends",
+      "cta": "Follow to stay ahead of AI business trends!"
+    },
+    {
+      "id": 17,
+      "title": "What is Multimodal AI?",
+      "hook": "AI can now see, hear, AND read.\nMultimodal AI is a game changer 👇",
+      "emoji": "👁️",
+      "points": [
+        "Multimodal = AI handles text, images & audio",
+        "Upload a photo and ask questions about it",
+        "Analyze charts, diagrams, screenshots",
+        "GPT-4o and Claude are multimodal"
+      ],
+      "hashtags": "#MultimodalAI #VisionAI #GenAI #AICapabilities #GPT4 #Claude #AITechnology #TechExplained",
+      "cta": "Follow for practical multimodal AI use cases!"
+    },
+    {
+      "id": 18,
+      "title": "Building a Personal AI Assistant",
+      "hook": "I built a personal AI that knows\neverything about my business. Here's how 👇",
+      "emoji": "🤖",
+      "points": [
+        "Create a detailed system prompt about you",
+        "Feed it your documents & preferences",
+        "Connect it to your calendar & email",
+        "Result: AI that thinks like you"
+      ],
+      "hashtags": "#PersonalAI #AIAssistant #GenAI #Productivity #AIAutomation #CustomAI #AITools #SmartWork",
+      "cta": "Comment 'ASSISTANT' for the full tutorial!"
+    },
+    {
+      "id": 19,
+      "title": "AI Ethics: 5 Things to Know",
+      "hook": "AI is powerful.\nBut power without ethics is dangerous 👇",
+      "emoji": "⚖️",
+      "points": [
+        "Always disclose when content is AI-generated",
+        "Never use AI to spread misinformation",
+        "Protect user data in AI applications",
+        "Bias in data = bias in AI outputs"
+      ],
+      "hashtags": "#AIEthics #ResponsibleAI #GenAI #AIPolicy #TechEthics #AIForGood #DigitalEthics #FutureOfAI",
+      "cta": "Follow for ethical & practical AI education!"
+    },
+    {
+      "id": 20,
+      "title": "Zero to AI Developer in 30 Days",
+      "hook": "No CS degree needed.\nHere's how to become an AI developer 👇",
+      "emoji": "🚀",
+      "points": [
+        "Week 1: Learn Python basics (free on YouTube)",
+        "Week 2: Use OpenAI / Anthropic APIs",
+        "Week 3: Build your first AI app",
+        "Week 4: Deploy & share it with the world"
+      ],
+      "hashtags": "#AILearning #LearnAI #AICareer #GenAI #Python #DeveloperJourney #AISkills #TechCareer",
+      "cta": "Save this roadmap! Your AI journey starts today."
+    },
+    {
+      "id": 21,
+      "title": "How AI Generates Images",
+      "hook": "How does AI turn words into stunning images?\nThe answer will blow your mind 👇",
+      "emoji": "🎨",
+      "points": [
+        "Diffusion models start with random noise",
+        "Gradually remove noise guided by your text",
+        "Trained on billions of image-text pairs",
+        "DALL-E 3 and Midjourney use this method"
+      ],
+      "hashtags": "#AIImages #DiffusionModels #GenerativeAI #Midjourney #DALLE #AIArt #ImageGeneration #TechExplained",
+      "cta": "Follow for AI creativity tips every day!"
+    },
+    {
+      "id": 22,
+      "title": "10 AI Prompts for Entrepreneurs",
+      "hook": "These 10 prompts will transform\nyour business workflow in minutes 👇",
+      "emoji": "💼",
+      "points": [
+        "'Write a cold email for [product] to [audience]'",
+        "'Analyze my competitors and find gaps'",
+        "'Create a 30-day content calendar for [niche]'",
+        "'Draft an investor pitch for [business idea]'"
+      ],
+      "hashtags": "#EntrepreneurAI #AIForBusiness #BusinessPrompts #GenAI #StartupLife #AITools #BusinessGrowth #Entrepreneur",
+      "cta": "Save these prompts! Share with a founder!"
+    },
+    {
+      "id": 23,
+      "title": "What is Vector Database?",
+      "hook": "AI needs a special kind of database.\nVector DBs power the AI revolution 👇",
+      "emoji": "🗄️",
+      "points": [
+        "Vector DBs store AI 'embeddings' (meanings)",
+        "Find semantically similar content instantly",
+        "Critical for RAG and AI memory systems",
+        "Pinecone, Weaviate, Chroma are popular ones"
+      ],
+      "hashtags": "#VectorDatabase #AIInfrastructure #RAG #GenAI #MachineLearning #TechEducation #AIEngineering #Embeddings",
+      "cta": "Follow for deep AI technical knowledge!"
+    },
+    {
+      "id": 24,
+      "title": "AI for Social Media Growth",
+      "hook": "I grew from 0 to 10K followers\nusing AI as my secret weapon 👇",
+      "emoji": "📈",
+      "points": [
+        "Use AI to find viral hooks in your niche",
+        "Generate 10 caption variations, pick the best",
+        "Analyze competitor content patterns with AI",
+        "Schedule AI-assisted posts consistently"
+      ],
+      "hashtags": "#AIForSocialMedia #ContentStrategy #InstagramGrowth #GenAI #SocialMediaMarketing #CreatorTips #AIMarketing",
+      "cta": "Comment 'GROW' for my full AI content system!"
+    },
+    {
+      "id": 25,
+      "title": "Claude vs GPT-4: Who Wins at Coding?",
+      "hook": "Which AI writes better code?\nI tested both for 30 days — here's the truth 👇",
+      "emoji": "💻",
+      "points": [
+        "Claude: better at long codebases & reasoning",
+        "GPT-4: stronger with code interpreting",
+        "Claude Code: best for autonomous coding tasks",
+        "For most developers: use both together"
+      ],
+      "hashtags": "#AICoding #ClaudeCode #ChatGPT #GenAI #SoftwareDevelopment #AIForDev #CodeWithAI #ProgrammingTips",
+      "cta": "Follow for honest AI tool comparisons!"
+    },
+    {
+      "id": 26,
+      "title": "What is an AI Embedding?",
+      "hook": "How does AI 'understand' meaning?\nEmbeddings are the secret 👇",
+      "emoji": "🧬",
+      "points": [
+        "Embeddings convert text to numbers (vectors)",
+        "Similar meanings = similar numbers",
+        "This lets AI measure semantic similarity",
+        "Power behind search, recommendations & RAG"
+      ],
+      "hashtags": "#AIEmbeddings #MachineLearning #NLP #GenAI #TechExplained #VectorSearch #AIEngineering #DeepLearning",
+      "cta": "Follow to understand AI from the inside out!"
+    },
+    {
+      "id": 27,
+      "title": "No-Code AI Apps: Build Without Coding",
+      "hook": "You don't need to code\nto build powerful AI apps. Here's how 👇",
+      "emoji": "🛠️",
+      "points": [
+        "Zapier: connect AI to 5000+ apps",
+        "Make.com: visual AI workflow builder",
+        "Bubble.io: build full AI-powered web apps",
+        "Claude Projects: custom AI without code"
+      ],
+      "hashtags": "#NoCodeAI #AIApps #NoCode #GenAI #ZapierTips #Automation #AIForEveryone #TechTools",
+      "cta": "Save this list — no code, full power!"
+    },
+    {
+      "id": 28,
+      "title": "The Future of Work With AI",
+      "hook": "AI isn't taking your job.\nBut someone using AI IS. 👇",
+      "emoji": "🔮",
+      "points": [
+        "By 2027, 85M jobs transformed by AI",
+        "New roles: AI trainer, prompt engineer",
+        "AI amplifies skilled workers 10x",
+        "Learn AI now or risk being left behind"
+      ],
+      "hashtags": "#FutureOfWork #AIJobs #GenAI #CareerAdvice #AISkills #WorkplaceAI #DigitalTransformation #AITrends",
+      "cta": "Follow to future-proof your career with AI!"
+    },
+    {
+      "id": 29,
+      "title": "Retrieval Augmented Generation Deep Dive",
+      "hook": "ChatGPT doesn't know what happened last week.\nRAG solves this — here's the exact process 👇",
+      "emoji": "🔍",
+      "points": [
+        "1. User asks a question",
+        "2. System searches your documents",
+        "3. Relevant chunks fed to the AI",
+        "4. AI answers with YOUR specific data"
+      ],
+      "hashtags": "#RAG #RetrievalAugmentedGeneration #GenAI #LLM #AIEngineering #EnterpriseAI #AIArchitecture #TechDeepDive",
+      "cta": "Follow for enterprise AI knowledge!"
+    },
+    {
+      "id": 30,
+      "title": "AI Tools That Will Replace These Apps",
+      "hook": "These popular apps are being\nreplaced by AI right now 👇",
+      "emoji": "💥",
+      "points": [
+        "Google Search → Perplexity AI",
+        "Grammarly → Claude / ChatGPT",
+        "Stock photos → Midjourney / DALL-E",
+        "Google Translate → DeepL AI"
+      ],
+      "hashtags": "#AIvsApps #FutureOfTech #GenAI #TechTrends #AIDisruption #AITools #TechNews #FutureOfAI",
+      "cta": "Which replacement surprised you most? Comment!"
+    }
+  ]
+}

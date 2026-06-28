@@ -1,0 +1,48 @@
+name: Daily Instagram Reel
+
+on:
+  schedule:
+    - cron: '30 4 * * *'   # 10:00 AM IST = 04:30 UTC
+  workflow_dispatch:         # allow manual trigger from GitHub UI
+
+jobs:
+  post-reel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          sudo mkdir -p /usr/share/fonts/truetype/google-fonts
+          sudo wget -q "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Bold.ttf" \
+               -O /usr/share/fonts/truetype/google-fonts/Poppins-Bold.ttf
+          sudo wget -q "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Medium.ttf" \
+               -O /usr/share/fonts/truetype/google-fonts/Poppins-Medium.ttf
+          sudo wget -q "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf" \
+               -O /usr/share/fonts/truetype/google-fonts/Poppins-Regular.ttf
+          sudo fc-cache -f
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate Reel
+        run: python3 scripts/generate_reel_v2.py
+
+      - name: Post to Instagram via Zernio
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+        run: python3 scripts/post_reel.py
+
+      - name: Save topic tracker (commit back)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/topic_tracker.json
+          git diff --staged --quiet || git commit -m "chore: advance topic tracker [skip ci]"
+          git push
