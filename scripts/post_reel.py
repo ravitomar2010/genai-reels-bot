@@ -4,11 +4,11 @@ Upload generated Reel to Zernio and post to Instagram.
 Runs fully automated — no human steps needed.
 """
 
-import sys, json, time, os, glob, requests
+import sys, json, time, os, requests
 from pathlib import Path
 
 ZERNIO_KEY  = os.environ.get("ZERNIO_API_KEY", "")
-ZERNIO_BASE = "https://api.zernio.com/v1"
+ZERNIO_BASE = "https://zernio.com/api/v1"
 HEADERS     = {"Authorization": f"Bearer {ZERNIO_KEY}", "Content-Type": "application/json"}
 
 MAX_RETRIES = 3
@@ -35,60 +35,78 @@ def find_latest_meta():
     with open(meta_path) as f:
         return json.load(f)
 
+def get_instagram_account_id():
+    """Fetch the connected Instagram account ID from Zernio."""
+    def _fetch():
+        log("Fetching connected accounts...")
+        r = requests.get(f"{ZERNIO_BASE}/accounts", headers=HEADERS, timeout=30)
+        r.raise_for_status()
+        accounts = r.json()
+        if isinstance(accounts, dict):
+            accounts = accounts.get("accounts") or accounts.get("data") or []
+        for acc in accounts:
+            if acc.get("platform") == "instagram":
+                aid = acc.get("_id") or acc.get("id") or acc.get("accountId")
+                log(f"  Found Instagram account: {aid}")
+                return aid
+        raise RuntimeError(f"No Instagram account connected in Zernio. Connect one at https://zernio.com")
+
+    return _retry(_fetch, "Fetch accounts")
+
 def upload_video(video_path: Path) -> str:
-    def _get_upload_link():
-        log("Getting upload link...")
-        r = requests.post(f"{ZERNIO_BASE}/media/generate-upload-link",
-                          headers=HEADERS, json={}, timeout=30)
+    """Upload video via Zernio presigned URL flow."""
+    def _get_presigned():
+        log("Getting presigned upload URL...")
+        r = requests.post(f"{ZERNIO_BASE}/media/presign",
+                          headers=HEADERS,
+                          json={"filename": video_path.name, "contentType": "video/mp4"},
+                          timeout=30)
         r.raise_for_status()
         return r.json()
 
-    data  = _retry(_get_upload_link, "Get upload link")
-    token = data.get("token")
-    url   = data.get("upload_url") or data.get("url")
-    log(f"Uploading {video_path.name} ({video_path.stat().st_size//1024} KB)...")
+    data = _retry(_get_presigned, "Get presigned URL")
+    upload_url = data.get("uploadUrl")
+    public_url = data.get("publicUrl")
+    log(f"Uploading {video_path.name} ({video_path.stat().st_size // 1024} KB)...")
 
     def _upload_file():
         with open(video_path, "rb") as f:
-            up = requests.post(url, files={"file": (video_path.name, f, "video/mp4")}, timeout=120)
-        log(f"Upload HTTP {up.status_code}")
+            up = requests.put(upload_url,
+                              data=f.read(),
+                              headers={"Content-Type": "video/mp4"},
+                              timeout=300)
+        log(f"  Upload HTTP {up.status_code}")
         up.raise_for_status()
 
     _retry(_upload_file, "Upload file")
+    log(f"Upload complete: {public_url}")
+    return public_url
 
-    for i in range(10):
-        time.sleep(5)
-        s = requests.get(f"{ZERNIO_BASE}/media/check-upload-status",
-                         headers=HEADERS, params={"token": token}, timeout=30)
-        s.raise_for_status()
-        sd = s.json()
-        log(f"  Status check {i+1}: {sd.get('status','?')}")
-        urls = sd.get("media_urls") or sd.get("urls") or []
-        if urls:
-            log(f"Upload complete: {urls[0]}")
-            return urls[0]
-        if sd.get("status") == "failed":
-            raise RuntimeError(f"Upload failed: {sd}")
-
-    raise TimeoutError("Upload timed out after 50s")
-
-def post_to_instagram(media_url: str, caption: str) -> str:
+def post_to_instagram(media_url: str, caption: str, account_id: str) -> str:
     def _post():
         log("Posting to Instagram...")
-        r = requests.post(
-            f"{ZERNIO_BASE}/posts",
-            headers=HEADERS,
-            json={"platform": "instagram", "content": caption,
-                  "media_urls": media_url, "publish_now": True},
-            timeout=60
-        )
+        body = {
+            "content": caption,
+            "mediaItems": [{"url": media_url, "type": "video"}],
+            "platforms": [{
+                "platform": "instagram",
+                "accountId": account_id,
+                "platformSpecificData": {
+                    "contentType": "reels",
+                    "shareToFeed": True,
+                },
+            }],
+            "publishNow": True,
+        }
+        r = requests.post(f"{ZERNIO_BASE}/posts",
+                          headers=HEADERS, json=body, timeout=60)
         r.raise_for_status()
         result = r.json()
-        log(f"Response: {result}")
-        post_id = result.get("id") or result.get("post_id") or result.get("postId")
+        log(f"  Response: {result}")
+        post_id = result.get("id") or result.get("post_id") or result.get("postId") or result.get("_id")
         if not post_id and not result.get("success"):
             raise RuntimeError(f"Post failed: {result}")
-        return str(post_id)
+        return str(post_id or "ok")
 
     return _retry(_post, "Post to Instagram")
 
@@ -106,8 +124,9 @@ def main():
         raise FileNotFoundError(f"Video not found: {video_path}")
 
     log(f"Topic: {meta['topic_title']} (#{meta['topic_id']})")
-    media_url = upload_video(video_path)
-    post_id   = post_to_instagram(media_url, meta["caption"])
+    account_id = get_instagram_account_id()
+    media_url  = upload_video(video_path)
+    post_id    = post_to_instagram(media_url, meta["caption"], account_id)
     log(f"\nPosted to @agentwave.ai | Post ID: {post_id}")
     log(f"   Topic: {meta['topic_title']}")
 
