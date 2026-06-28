@@ -308,18 +308,18 @@ def make_hook_frame(bg, topic, theme, handle, t):
 
     # Series pill
     pill_y = int(-80 + ease_out(min(1,t*3))*220)
-    pf     = fnt(FONT_MED, 38)
+    pf     = fnt(FONT_MED, 44)
     ptxt   = "GEN AI MASTER SERIES"
     pw     = int(pf.getlength(ptxt))
-    rrect(draw,[(W-pw)//2-28,pill_y,(W+pw)//2+28,pill_y+60],30,theme["accent"])
+    rrect(draw,[(W-pw)//2-32,pill_y,(W+pw)//2+32,pill_y+66],33,theme["accent"])
     draw.text(((W-pw)//2,pill_y+12),ptxt,font=pf,fill=(255,255,255))
 
-    # Hook text — large and bold
-    hook_font = fnt(FONT_BOLD, 88)
-    lines = wrap_text(topic["hook"], hook_font, W-120)
-    bh    = text_block_h(lines, hook_font, 22)
+    # Hook text — extra large
+    hook_font = fnt(FONT_BOLD, 110)
+    lines = wrap_text(topic["hook"], hook_font, W-100)
+    bh    = text_block_h(lines, hook_font, 28)
     draw_reveal(draw, lines, H//2-bh//2, hook_font, (255,255,255),
-                max(0,(t-0.15)), delay_per_line=0.10, reveal_dur=0.15, gap=22)
+                max(0,(t-0.15)), delay_per_line=0.10, reveal_dur=0.15, gap=28)
 
     # Progress bar
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
@@ -350,7 +350,7 @@ def make_title_frame(bg, topic, theme, handle, t):
     bw = int(160*ease_out(min(1,max(0,(t-0.15)*4))))
     if bw>0: rrect(draw,[(W-bw)//2,int(H*0.28)+62,(W+bw)//2,int(H*0.28)+72],4,theme["accent"])
 
-    title_font = fnt(FONT_BOLD, 92)
+    title_font = fnt(FONT_BOLD, 110)
     lines  = wrap_text(topic["title"], title_font, W-180)
     bh     = text_block_h(lines, title_font, 24)
     draw_reveal(draw, lines, H//2-bh//2-20, title_font, (255,255,255),
@@ -407,7 +407,7 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
 
     # Point text — big and bold
     pt    = strip_emoji(topic["points"][idx])
-    pt_font = fnt(FONT_BOLD, 82)
+    pt_font = fnt(FONT_BOLD, 100)
     lines = wrap_text(pt, pt_font, W-180)
     bh    = text_block_h(lines, pt_font, 22)
     mid_y = cy2 + card_h//2 - bh//2
@@ -446,7 +446,7 @@ def make_cta_frame(bg, topic, theme, handle, t):
     bw = int(160*ease_out(min(1,max(0,(t-0.12)*4))))
     if bw>0: rrect(draw,[(W-bw)//2,int(H*0.16)+76,(W+bw)//2,int(H*0.16)+86],4,theme["accent"])
 
-    cta_font = fnt(FONT_BOLD, 78)
+    cta_font = fnt(FONT_BOLD, 96)
     lines  = wrap_text(topic["cta"], cta_font, W-160)
     bh     = text_block_h(lines, cta_font, 22)
     draw_reveal(draw, lines, H//2-bh//2-60, cta_font, (255,255,255),
@@ -510,7 +510,7 @@ def generate_voiceover(topic, output_mp3):
 
     async def _tts():
         voice = "en-US-GuyNeural"
-        communicate = edge_tts.Communicate(script, voice, rate="-5%", pitch="+2Hz")
+        communicate = edge_tts.Communicate(script, voice, rate="+0%", volume="+100%", pitch="+2Hz")
         await communicate.save(str(output_mp3))
 
     asyncio.run(_tts())
@@ -545,7 +545,7 @@ def build_video(all_frames, output_path, voiceover_path=None):
         cmd_merge = ["ffmpeg","-y",
                      "-i",str(silent_path),"-i",str(voiceover_path),
                      "-c:v","copy","-c:a","aac","-b:a","192k",
-                     "-af","volume=1.8,aresample=44100","-ac","2",
+                     "-af","volume=4.0,aresample=44100","-ac","2",
                      "-shortest","-movflags","+faststart",
                      str(output_path)]
         r = subprocess.run(cmd_merge,capture_output=True,text=True,timeout=120)
