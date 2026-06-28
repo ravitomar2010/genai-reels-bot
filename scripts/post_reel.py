@@ -102,10 +102,13 @@ def post_to_instagram(media_url: str, caption: str, account_id: str) -> str:
                           headers=HEADERS, json=body, timeout=60)
         r.raise_for_status()
         result = r.json()
-        log(f"  Response: {result}")
-        post_id = result.get("id") or result.get("post_id") or result.get("postId") or result.get("_id")
-        if not post_id and not result.get("success"):
-            raise RuntimeError(f"Post failed: {result}")
+        post_obj = result.get("post", {})
+        post_id = (
+            post_obj.get("_id") or post_obj.get("id")
+            or result.get("id") or result.get("post_id")
+            or result.get("postId") or result.get("_id")
+        )
+        log(f"  Post ID: {post_id}")
         return str(post_id or "ok")
 
     return _retry(_post, "Post to Instagram")
