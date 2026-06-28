@@ -144,14 +144,11 @@ def prepare_background(topic_id, theme_idx, theme):
     if ai_bg is None:
         return make_gradient_bg(theme)
 
-    # Darken + desaturate to make text pop
     from PIL import ImageEnhance
-    ai_bg = ImageEnhance.Brightness(ai_bg).enhance(0.35)
-    ai_bg = ImageEnhance.Color(ai_bg).enhance(0.7)
-
-    # Tint overlay with theme color
+    ai_bg = ImageEnhance.Brightness(ai_bg).enhance(0.30)
+    ai_bg = ImageEnhance.Color(ai_bg).enhance(0.6)
     tint = Image.new("RGB",(W,H), theme["bg"])
-    ai_bg = Image.blend(ai_bg, tint, 0.45)
+    ai_bg = Image.blend(ai_bg, tint, 0.50)
     return ai_bg
 
 
@@ -186,18 +183,27 @@ def line_height(font, gap=12):
 def text_block_h(lines, font, gap=12):
     return line_height(font,gap)*len(lines)
 
-def draw_reveal(draw, lines, y, font, color, t, gap=12, delay_per_line=0.12, reveal_dur=0.18):
+def draw_text_shadow(draw, xy, text, font, fill, shadow_color=(0,0,0), shadow_offset=3):
+    sx, sy = xy
+    for dx in range(-shadow_offset, shadow_offset+1):
+        for dy in range(-shadow_offset, shadow_offset+1):
+            if dx == 0 and dy == 0:
+                continue
+            draw.text((sx+dx, sy+dy), text, font=font, fill=shadow_color)
+    draw.text(xy, text, font=font, fill=fill)
+
+def draw_reveal(draw, lines, y, font, color, t, gap=14, delay_per_line=0.12, reveal_dur=0.18):
     lh = line_height(font, gap)
     for i,line in enumerate(lines):
         start = i*delay_per_line
         a = ease_out((t-start)/reveal_dur)
         if a <= 0: continue
-        c = blend_c((0,0,0), color, a)
-        # Slide up effect
+        alpha = int(255 * a)
+        c = (*color[:3], alpha) if len(color) == 4 else color
         offset = int((1-a)*30)
         lw = int(font.getlength(line))
         x  = (W-lw)//2
-        draw.text((x, y+i*lh-offset), line, font=font, fill=c)
+        draw_text_shadow(draw, (x, y+i*lh-offset), line, font, c, shadow_offset=4)
 
 def apply_fade(img, alpha):
     if alpha >= 1.0: return img
@@ -267,40 +273,26 @@ def make_hook_frame(bg, topic, theme, handle, t):
     img  = apply_ken_burns(bg, t, zoom_in=True)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, int(H*0.28+pulse*15), 350, theme["glow"], 10)
+
+    # Dark overlay for text readability
+    ov = Image.new("RGBA",(W,H),(0,0,0,120))
+    img = Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
     draw = ImageDraw.Draw(img)
 
     # Series pill
     pill_y = int(-80 + ease_out(min(1,t*3))*220)
-    pf     = fnt(FONT_MED, 34)
+    pf     = fnt(FONT_MED, 38)
     ptxt   = "GEN AI MASTER SERIES"
     pw     = int(pf.getlength(ptxt))
-    rrect(draw,[(W-pw)//2-28,pill_y,(W+pw)//2+28,pill_y+56],28,theme["accent"])
-    draw.text(((W-pw)//2,pill_y+10),ptxt,font=pf,fill=(255,255,255))
+    rrect(draw,[(W-pw)//2-28,pill_y,(W+pw)//2+28,pill_y+60],30,theme["accent"])
+    draw.text(((W-pw)//2,pill_y+12),ptxt,font=pf,fill=(255,255,255))
 
-    # Day badge
-    t2 = ease_out(max(0,min(1,(t-0.08)*3)))
-    cy = int(420+40*(1-t2))
-    r  = int(100*t2)
-    if r>5:
-        img  = draw_glow_overlay(img, W//2, cy, r+30, theme["glow"], 6)
-        draw = ImageDraw.Draw(img)
-        draw.ellipse([W//2-r,cy-r,W//2+r,cy+r], fill=theme["accent"])
-        nf = fnt(FONT_BOLD, int(80*t2))
-        nt = str(topic["id"])
-        nw = int(nf.getlength(nt)); nb = nf.getbbox(nt)
-        draw.text((W//2-nw//2,cy-nb[3]//2-nb[1]),nt,font=nf,fill=(255,255,255))
-
-    cf   = fnt(FONT_MED,38)
-    ctxt = f"Day {topic['id']}"
-    cw   = int(cf.getlength(ctxt))
-    ca   = ease_out(min(1,max(0,(t-0.2)*4)))
-    draw.text(((W-cw)//2,530+20),ctxt,font=cf,fill=blend_c((0,0,0),theme["sub"],ca))
-
-    # Hook text
-    lines = wrap_text(topic["hook"], fnt(FONT_BOLD,76), W-100)
-    bh    = text_block_h(lines,fnt(FONT_BOLD,76),20)
-    draw_reveal(draw,lines,H//2-bh//2+80,fnt(FONT_BOLD,76),(255,255,255),
-                max(0,(t-0.22)),delay_per_line=0.10,reveal_dur=0.15)
+    # Hook text — large and bold
+    hook_font = fnt(FONT_BOLD, 88)
+    lines = wrap_text(topic["hook"], hook_font, W-120)
+    bh    = text_block_h(lines, hook_font, 22)
+    draw_reveal(draw, lines, H//2-bh//2, hook_font, (255,255,255),
+                max(0,(t-0.15)), delay_per_line=0.10, reveal_dur=0.15, gap=22)
 
     # Progress bar
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
@@ -313,36 +305,36 @@ def make_hook_frame(bg, topic, theme, handle, t):
 def make_title_frame(bg, topic, theme, handle, t):
     img  = apply_ken_burns(bg, t, zoom_in=False)
     img  = draw_glow_overlay(img, W//2, H//3, 300, theme["glow"], 8)
-    draw = ImageDraw.Draw(img)
 
-    # Frosted card
-    card = Image.new("RGBA",(W-80,int(H*0.55)),(0,0,0,0))
+    # Frosted card — high opacity
+    card = Image.new("RGBA",(W-60,int(H*0.55)),(0,0,0,0))
     cd   = ImageDraw.Draw(card)
-    cd.rounded_rectangle([0,0,W-80,int(H*0.55)],44,fill=(*theme["bg"],200))
+    cd.rounded_rectangle([0,0,W-60,int(H*0.55)],44,fill=(0,0,0,230))
     img_rgba = img.convert("RGBA")
-    img_rgba.paste(card,(40,int(H*0.22)),card)
+    img_rgba.paste(card,(30,int(H*0.22)),card)
     img  = img_rgba.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    lf   = fnt(FONT_MED,42)
+    lf   = fnt(FONT_BOLD,46)
     lt   = "TODAY'S LESSON"
     lw   = int(lf.getlength(lt))
-    la   = ease_out(min(1,t*4))
-    draw.text(((W-lw)//2,int(H*0.28)),lt,font=lf,fill=blend_c((0,0,0),theme["sub"],la))
+    draw_text_shadow(draw, ((W-lw)//2,int(H*0.28)), lt, lf, theme["accent"])
 
-    bw = int(120*ease_out(min(1,max(0,(t-0.15)*4))))
-    if bw>0: rrect(draw,[(W-bw)//2,int(H*0.28)+58,(W+bw)//2,int(H*0.28)+68],4,theme["accent"])
+    bw = int(160*ease_out(min(1,max(0,(t-0.15)*4))))
+    if bw>0: rrect(draw,[(W-bw)//2,int(H*0.28)+62,(W+bw)//2,int(H*0.28)+72],4,theme["accent"])
 
-    lines  = wrap_text(topic["title"],fnt(FONT_BOLD,84),W-180)
-    bh     = text_block_h(lines,fnt(FONT_BOLD,84),20)
-    draw_reveal(draw,lines,H//2-bh//2-20,fnt(FONT_BOLD,84),(255,255,255),
-                max(0,(t-0.2)),delay_per_line=0.10,reveal_dur=0.18)
+    title_font = fnt(FONT_BOLD, 92)
+    lines  = wrap_text(topic["title"], title_font, W-180)
+    bh     = text_block_h(lines, title_font, 24)
+    draw_reveal(draw, lines, H//2-bh//2-20, title_font, (255,255,255),
+                max(0,(t-0.2)), delay_per_line=0.10, reveal_dur=0.18, gap=24)
 
-    df   = fnt(FONT_REG,38)
-    dtxt = f"Day {topic['id']}  ·  {datetime.date.today().strftime('%b %d, %Y')}"
+    df   = fnt(FONT_REG,40)
+    dtxt = datetime.date.today().strftime('%b %d, %Y')
     dw   = int(df.getlength(dtxt))
     da   = ease_out(min(1,max(0,(t-0.5)*3)))
-    draw.text(((W-dw)//2,int(H*0.68)),dtxt,font=df,fill=blend_c((0,0,0),theme["sub"],da))
+    draw_text_shadow(draw, ((W-dw)//2,int(H*0.68)), dtxt, df,
+                     blend_c((0,0,0),theme["sub"],da))
 
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
     rrect(draw,[40,H-58,40+int((W-80)*2/7),H-50],4,theme["accent"])
@@ -354,44 +346,46 @@ def make_title_frame(bg, topic, theme, handle, t):
 def make_point_frame(bg, topic, theme, handle, idx, t, total):
     img  = apply_ken_burns(bg, t, zoom_in=(idx % 2 == 0))
     pulse = math.sin(t*math.pi*1.5)*0.5+0.5
-    cx,cy = W//2, 400
+    cx,cy = W//2, 350
     img  = draw_glow_overlay(img, cx, cy, int(130+pulse*20), theme["glow"], 8)
     draw = ImageDraw.Draw(img)
 
     # Number circle
     s = ease_out(min(1,t*5))
-    r = int(110*s)
+    r = int(120*s)
     if r>4:
         draw.ellipse([cx-r,cy-r,cx+r,cy+r],fill=theme["accent"])
-        nf  = fnt(FONT_BOLD,int(90*s))
+        nf  = fnt(FONT_BOLD,int(100*s))
         nt  = str(idx+1)
         nw  = int(nf.getlength(nt)); nb = nf.getbbox(nt)
         draw.text((cx-nw//2,cy-nb[3]//2-nb[1]),nt,font=nf,fill=(255,255,255))
 
-    cf   = fnt(FONT_MED,40)
+    cf   = fnt(FONT_BOLD,44)
     ctxt = f"of {total}"
     cw   = int(cf.getlength(ctxt))
     ca   = ease_out(min(1,max(0,(t-0.12)*4)))
-    draw.text(((W-cw)//2,545),ctxt,font=cf,fill=blend_c((0,0,0),theme["sub"],ca))
+    draw_text_shadow(draw, ((W-cw)//2,500), ctxt, cf, blend_c((0,0,0),theme["sub"],ca))
 
-    # Frosted card
+    # Frosted card — solid dark
     ct  = ease_out(min(1,max(0,(t-0.1)*3)))
-    cy2 = int(660 + (1-ct)*200)
-    card = Image.new("RGBA",(W-80,H-cy2-170),(0,0,0,0))
+    cy2 = int(620 + (1-ct)*200)
+    card_h = H-cy2-120
+    card = Image.new("RGBA",(W-60,card_h),(0,0,0,0))
     cd   = ImageDraw.Draw(card)
-    cd.rounded_rectangle([0,0,W-80,H-cy2-170],44,fill=(*theme["bg"],210))
+    cd.rounded_rectangle([0,0,W-60,card_h],44,fill=(0,0,0,235))
     img_rgba = img.convert("RGBA")
-    img_rgba.paste(card,(40,cy2),card)
+    img_rgba.paste(card,(30,cy2),card)
     img  = img_rgba.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # Point text
+    # Point text — big and bold
     pt    = strip_emoji(topic["points"][idx])
-    lines = wrap_text(pt,fnt(FONT_BOLD,70),W-180)
-    bh    = text_block_h(lines,fnt(FONT_BOLD,70),18)
-    mid_y = cy2 + (H-cy2-170)//2 - bh//2
-    draw_reveal(draw,lines,mid_y,fnt(FONT_BOLD,70),(255,255,255),
-                max(0,(t-0.28)),delay_per_line=0.12,reveal_dur=0.18)
+    pt_font = fnt(FONT_BOLD, 82)
+    lines = wrap_text(pt, pt_font, W-180)
+    bh    = text_block_h(lines, pt_font, 22)
+    mid_y = cy2 + card_h//2 - bh//2
+    draw_reveal(draw, lines, mid_y, pt_font, (255,255,255),
+                max(0,(t-0.25)), delay_per_line=0.12, reveal_dur=0.18, gap=22)
 
     prog = (idx+3)/7
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
@@ -404,48 +398,50 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
 def make_cta_frame(bg, topic, theme, handle, t):
     img  = apply_ken_burns(bg, t, zoom_in=True, strength=0.10)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
-    img  = draw_glow_overlay(img, W//2, H-200, int(180+pulse*50), theme["accent"], 10)
-    draw = ImageDraw.Draw(img)
+    img  = draw_glow_overlay(img, W//2, H//2, int(250+pulse*50), theme["accent"], 10)
 
-    # Frosted card
-    card = Image.new("RGBA",(W-70,int(H*0.72)),(0,0,0,0))
+    # Full dark overlay
+    card = Image.new("RGBA",(W-40,int(H*0.75)),(0,0,0,0))
     cd   = ImageDraw.Draw(card)
-    cd.rounded_rectangle([0,0,W-70,int(H*0.72)],50,fill=(*theme["bg"],210))
+    cd.rounded_rectangle([0,0,W-40,int(H*0.75)],50,fill=(0,0,0,235))
     img_rgba = img.convert("RGBA")
-    img_rgba.paste(card,(35,int(H*0.12)),card)
+    img_rgba.paste(card,(20,int(H*0.10)),card)
     img  = img_rgba.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    tf   = fnt(FONT_BOLD,56)
+    tf   = fnt(FONT_BOLD,64)
     ttxt = "FOLLOW FOR MORE"
     tw   = int(tf.getlength(ttxt))
     ta   = ease_out(min(1,t*4))
-    draw.text(((W-tw)//2,int(H*0.18)),ttxt,font=tf,fill=blend_c((0,0,0),theme["accent"],ta))
+    draw_text_shadow(draw, ((W-tw)//2,int(H*0.16)), ttxt, tf,
+                     blend_c((0,0,0),theme["accent"],ta))
 
-    bw = int(120*ease_out(min(1,max(0,(t-0.12)*4))))
-    if bw>0: rrect(draw,[(W-bw)//2,int(H*0.18)+68,(W+bw)//2,int(H*0.18)+78],4,theme["accent"])
+    bw = int(160*ease_out(min(1,max(0,(t-0.12)*4))))
+    if bw>0: rrect(draw,[(W-bw)//2,int(H*0.16)+76,(W+bw)//2,int(H*0.16)+86],4,theme["accent"])
 
-    lines  = wrap_text(topic["cta"],fnt(FONT_BOLD,66),W-160)
-    bh     = text_block_h(lines,fnt(FONT_BOLD,66),18)
-    draw_reveal(draw,lines,H//2-bh//2-60,fnt(FONT_BOLD,66),(255,255,255),
-                max(0,(t-0.2)),delay_per_line=0.12,reveal_dur=0.18)
+    cta_font = fnt(FONT_BOLD, 78)
+    lines  = wrap_text(topic["cta"], cta_font, W-160)
+    bh     = text_block_h(lines, cta_font, 22)
+    draw_reveal(draw, lines, H//2-bh//2-60, cta_font, (255,255,255),
+                max(0,(t-0.2)), delay_per_line=0.12, reveal_dur=0.18, gap=22)
 
-    tags  = [h for h in topic["hashtags"].split() if h.startswith("#")][:4]
+    tags  = [h for h in topic["hashtags"].split() if h.startswith("#")][:5]
     tstr  = "  ".join(tags)
-    xf    = fnt(FONT_REG,34)
+    xf    = fnt(FONT_MED,38)
     xw    = int(xf.getlength(tstr))
     xa    = ease_out(min(1,max(0,(t-0.4)*3)))
-    draw.text(((W-xw)//2,int(H*0.73)),tstr,font=xf,fill=blend_c((0,0,0),theme["sub"],xa))
+    draw_text_shadow(draw, ((W-xw)//2,int(H*0.70)), tstr, xf,
+                     blend_c((0,0,0),theme["sub"],xa))
 
-    # Handle button
-    hbt = ease_out(min(1,max(0,(t-0.5)*3)))
-    hf  = fnt(FONT_BOLD,60)
+    # Handle button — big and glowing
+    hf  = fnt(FONT_BOLD,64)
     hw  = int(hf.getlength(handle))
-    hbx = (W-hw)//2-36
-    img  = draw_glow_overlay(img, W//2, H-220, int(100+pulse*30), theme["accent"], 6)
+    hbx = (W-hw)//2-40
+    img  = draw_glow_overlay(img, W//2, H-220, int(120+pulse*30), theme["accent"], 6)
     draw = ImageDraw.Draw(img)
-    rrect(draw,[hbx,H-268,hbx+hw+72,H-168],34,theme["accent"])
-    draw.text(((W-hw)//2,H-268),handle,font=hf,fill=blend_c(theme["bg"],(255,255,255),hbt))
+    rrect(draw,[hbx,H-280,hbx+hw+80,H-170],36,theme["accent"])
+    hbt = ease_out(min(1,max(0,(t-0.5)*3)))
+    draw.text(((W-hw)//2,H-275),handle,font=hf,fill=blend_c(theme["bg"],(255,255,255),hbt))
 
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
     rrect(draw,[40,H-58,W-40,H-50],4,theme["accent"])
@@ -521,7 +517,8 @@ def build_video(all_frames, output_path, voiceover_path=None):
         print("  Merging voiceover with video...")
         cmd_merge = ["ffmpeg","-y",
                      "-i",str(silent_path),"-i",str(voiceover_path),
-                     "-c:v","copy","-c:a","aac","-b:a","128k",
+                     "-c:v","copy","-c:a","aac","-b:a","192k",
+                     "-af","volume=1.8,aresample=44100","-ac","2",
                      "-shortest","-movflags","+faststart",
                      str(output_path)]
         r = subprocess.run(cmd_merge,capture_output=True,text=True,timeout=120)

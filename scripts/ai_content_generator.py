@@ -191,7 +191,7 @@ Rules:
 - EXACTLY 5 hashtags per variant — pick from the trending/evergreen lists above, prioritize currently trending ones
 - Each variant should use a DIFFERENT mix of hashtags to test what performs best
 - Score each variant honestly 1-10 on viral potential
-- bg_prompt: create an engaging image prompt that VISUALLY CONVEYS the topic message — use real-world metaphors, human elements, or concept visualizations that hook the viewer (e.g. "a person surrounded by floating holographic AI agent interfaces, vibrant neon glow, dark studio, cinematic vertical 4k"). Avoid generic abstract patterns — the image should tell the story of the topic at a glance.
+- bg_prompt: create an ABSTRACT atmospheric background prompt — dark moody tones with soft glowing elements that evoke the topic's mood (e.g. "dark abstract neural network with soft purple and blue glowing nodes, bokeh particles floating, deep black background, cinematic vertical 4k"). NEVER use literal objects (no laptops, people, screens, split-screens). Keep it minimal, dark (80%+ dark), with 1-2 accent glow colors. The background must NOT compete with text overlay.
 - Output raw JSON only"""
 
     log(f"Calling Claude ({CLAUDE_MODEL})...")
