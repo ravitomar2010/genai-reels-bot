@@ -33,7 +33,14 @@ _FONT_SEARCH_DIRS = [
     "/usr/share/fonts/truetype",
     "/usr/share/fonts",
     "/usr/local/share/fonts",
+    str(REPO_ROOT / "fonts"),
 ]
+
+_FONT_URLS = {
+    "Poppins-Bold.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Bold.ttf",
+    "Poppins-Medium.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Medium.ttf",
+    "Poppins-Regular.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf",
+}
 
 def _find_font(name):
     for d in _FONT_SEARCH_DIRS:
@@ -41,6 +48,26 @@ def _find_font(name):
         if os.path.isfile(p):
             return p
     return None
+
+def _ensure_fonts():
+    """Download Poppins fonts if not found on the system."""
+    fonts_dir = REPO_ROOT / "fonts"
+    missing = [n for n in _FONT_URLS if _find_font(n) is None]
+    if not missing:
+        return
+    fonts_dir.mkdir(exist_ok=True)
+    import requests
+    for name in missing:
+        dest = fonts_dir / name
+        if dest.exists():
+            continue
+        print(f"  Downloading {name}...")
+        resp = requests.get(_FONT_URLS[name], timeout=30)
+        resp.raise_for_status()
+        dest.write_bytes(resp.content)
+    print(f"  Fonts cached in {fonts_dir}")
+
+_ensure_fonts()
 
 FONT_BOLD  = _find_font("Poppins-Bold.ttf") or "Poppins-Bold.ttf"
 FONT_MED   = _find_font("Poppins-Medium.ttf") or "Poppins-Medium.ttf"
