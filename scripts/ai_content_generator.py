@@ -26,8 +26,27 @@ def log(msg):
     print(msg, flush=True)
 
 
+def _search_google_news(query, max_results=5):
+    """Search Google News RSS (free, no API key)."""
+    try:
+        url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en&gl=US"
+        resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        if resp.status_code != 200:
+            return []
+        root = ET.fromstring(resp.text)
+        results = []
+        for item in root.findall(".//item")[:max_results]:
+            title = item.find("title")
+            if title is not None and title.text:
+                results.append(title.text.strip())
+        return results
+    except Exception as e:
+        log(f"  Search query '{query}' failed: {e}")
+        return []
+
+
 def fetch_trending_topics():
-    """Fetch trending AI headlines from Google News RSS (free, no API key)."""
+    """Fetch trending AI headlines from Google News RSS."""
     queries = [
         "generative AI trending",
         "AI tools new",
@@ -36,19 +55,37 @@ def fetch_trending_topics():
     ]
     headlines = []
     for q in queries:
-        try:
-            url = f"https://news.google.com/rss/search?q={q.replace(' ', '+')}&hl=en&gl=US"
-            resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-            if resp.status_code != 200:
-                continue
-            root = ET.fromstring(resp.text)
-            for item in root.findall(".//item")[:5]:
-                title = item.find("title")
-                if title is not None and title.text:
-                    headlines.append(title.text.strip())
-        except Exception as e:
-            log(f"  Search query '{q}' failed: {e}")
+        headlines.extend(_search_google_news(q))
     return list(dict.fromkeys(headlines))[:15]
+
+
+def fetch_trending_hashtags():
+    """Search for currently viral AI/tech hashtags on Instagram and social media."""
+    queries = [
+        "trending AI hashtags Instagram reels 2025",
+        "viral artificial intelligence hashtags social media",
+        "top GenAI tech hashtags today",
+    ]
+    raw_results = []
+    for q in queries:
+        raw_results.extend(_search_google_news(q, max_results=3))
+
+    hashtags = set()
+    for text in raw_results:
+        found = re.findall(r"#\w+", text)
+        for h in found:
+            hashtags.add(h)
+
+    evergreen = [
+        "#AI", "#GenAI", "#ArtificialIntelligence", "#AITools",
+        "#ChatGPT", "#Claude", "#LLM", "#PromptEngineering",
+        "#AIAgents", "#MachineLearning", "#TechTips", "#FutureOfAI",
+        "#AIAutomation", "#DeepLearning", "#AIForBusiness",
+    ]
+    return {
+        "discovered": sorted(hashtags)[:10],
+        "evergreen": evergreen,
+    }
 
 
 def load_used_titles():
@@ -60,7 +97,7 @@ def load_used_titles():
     return tracker.get("used_ai_titles", [])
 
 
-def generate_content(trending_headlines, used_titles):
+def generate_content(trending_headlines, trending_hashtags, used_titles):
     """Call Claude to generate viral reel content."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     today = datetime.date.today().strftime("%B %d, %Y")
@@ -75,6 +112,18 @@ def generate_content(trending_headlines, used_titles):
     else:
         used_block = "None yet."
 
+    discovered = trending_hashtags.get("discovered", [])
+    evergreen = trending_hashtags.get("evergreen", [])
+    if discovered:
+        hashtag_block = (
+            "Currently trending (use these first):\n"
+            + " ".join(discovered)
+            + "\n\nEvergreen high-volume:\n"
+            + " ".join(evergreen)
+        )
+    else:
+        hashtag_block = "Evergreen high-volume:\n" + " ".join(evergreen)
+
     prompt = f"""You are a viral Instagram Reels content strategist for @agentwave.ai, a Gen AI education account targeting developers, creators, and AI enthusiasts.
 
 Today is {today}.
@@ -82,12 +131,15 @@ Today is {today}.
 ## Trending AI Headlines
 {headlines_block}
 
+## Trending & High-Volume Hashtags
+{hashtag_block}
+
 ## Recently Used Topics (DO NOT repeat these)
 {used_block}
 
 ## Task
 
-Based on the trending topics, create ONE Instagram Reel topic about Gen AI that will go VIRAL.
+Based on the trending topics and hashtags above, create ONE Instagram Reel topic about Gen AI that will go VIRAL.
 
 Output ONLY this JSON (no markdown fences, no explanation):
 
@@ -99,33 +151,33 @@ Output ONLY this JSON (no markdown fences, no explanation):
   "caption_variants": [
     {{
       "caption": "Full Instagram caption with emojis, line breaks, and personality",
-      "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5 #Tag6 #Tag7 #Tag8",
+      "hashtags": "#Trending1 #Trending2 #Niche1 #Niche2 #Niche3",
       "virality_score": 8,
-      "angle": "educational / controversial / story / listicle / question"
+      "angle": "educational"
     }},
     {{
-      "caption": "Different angle caption...",
-      "hashtags": "#DifferentMix #OfTags ...",
+      "caption": "Different angle...",
+      "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5",
       "virality_score": 7,
-      "angle": "..."
+      "angle": "controversial"
     }},
     {{
       "caption": "...",
-      "hashtags": "...",
+      "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5",
       "virality_score": 6,
-      "angle": "..."
+      "angle": "personal story"
     }},
     {{
       "caption": "...",
-      "hashtags": "...",
+      "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5",
       "virality_score": 7,
-      "angle": "..."
+      "angle": "listicle"
     }},
     {{
       "caption": "...",
-      "hashtags": "...",
+      "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5",
       "virality_score": 9,
-      "angle": "..."
+      "angle": "question-based"
     }}
   ],
   "trend_source": "Which headline or trend inspired this topic"
@@ -135,7 +187,8 @@ Rules:
 - Hook line 1 must create a curiosity gap or make a bold/controversial claim
 - Each point should surprise or teach something non-obvious
 - ALL 5 caption variants must use a DIFFERENT angle (educational, controversial, personal story, listicle, question-based)
-- Hashtags: mix 3 high-volume tags (#AI #GenAI #ArtificialIntelligence) with 5 niche tags
+- EXACTLY 5 hashtags per variant — pick from the trending/evergreen lists above, prioritize currently trending ones
+- Each variant should use a DIFFERENT mix of hashtags to test what performs best
 - Score each variant honestly 1-10 on viral potential
 - Output raw JSON only"""
 
@@ -166,8 +219,12 @@ def main():
     for h in headlines[:5]:
         log(f"  • {h[:80]}")
 
+    log("Fetching trending hashtags...")
+    trending_hashtags = fetch_trending_hashtags()
+    log(f"  Discovered: {len(trending_hashtags['discovered'])} trending, {len(trending_hashtags['evergreen'])} evergreen")
+
     used_titles = load_used_titles()
-    content = generate_content(headlines, used_titles)
+    content = generate_content(headlines, trending_hashtags, used_titles)
 
     # Pick the highest-scoring variant
     variants = content["caption_variants"]
