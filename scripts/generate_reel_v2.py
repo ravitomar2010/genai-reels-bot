@@ -431,12 +431,26 @@ def build_video(all_frames, output_path):
 
 
 # ── Main ──────────────────────────────────────────────────────────────────
+def _load_ai_topic():
+    """Check for AI-generated topic from ai_content_generator.py."""
+    ai_path = OUTDIR / "ai_topic.json"
+    if not ai_path.exists():
+        return None
+    with open(ai_path) as f:
+        return json.load(f)
+
+
 def generate(topic_id=None):
     with open(TOPICS) as f: data = json.load(f)
     topics = data["topics"]
     handle = data.get("handle","@agentwave.ai")
 
-    if topic_id:
+    ai_topic = None if topic_id else _load_ai_topic()
+
+    if ai_topic:
+        topic = ai_topic
+        print(f"  Using AI-generated topic: {topic['title']}")
+    elif topic_id:
         topic = next((t for t in topics if t["id"]==int(topic_id)), topics[0])
     else:
         tracker = {}
@@ -459,7 +473,6 @@ def generate(topic_id=None):
 
     print(f"\n Animating Reel: #{topic['id']} — {topic['title']}")
 
-    # Fetch one AI background for the whole Reel
     bg = prepare_background(topic["id"], theme_idx, theme)
 
     all_frames = []
@@ -480,9 +493,13 @@ def generate(topic_id=None):
     out_path = OUTDIR/f"reel_v2_{date_str}_topic{topic['id']}.mp4"
     build_video(all_frames, out_path)
 
-    caption = (f"{topic['title']}\n\n"
-               + "\n".join(f"• {p}" for p in topic["points"])
-               + f"\n\n{topic['cta']}\n\n{topic['hashtags']}")
+    if topic.get("caption"):
+        caption = topic["caption"]
+    else:
+        caption = (f"{topic['title']}\n\n"
+                   + "\n".join(f"• {p}" for p in topic["points"])
+                   + f"\n\n{topic['cta']}\n\n{topic['hashtags']}")
+
     meta = {"video_path":str(out_path),"caption":caption,
             "topic_id":topic["id"],"topic_title":topic["title"],
             "generated_at":datetime.datetime.now().isoformat()}

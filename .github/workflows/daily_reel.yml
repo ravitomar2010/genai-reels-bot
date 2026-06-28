@@ -31,7 +31,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate Reel
+      - name: Generate AI content (trending topics + viral captions)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 scripts/ai_content_generator.py
+
+      - name: Generate Reel video
         run: python3 scripts/generate_reel_v2.py
 
       - name: Post to Instagram via Zernio
