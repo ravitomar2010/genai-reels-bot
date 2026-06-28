@@ -180,7 +180,8 @@ Output ONLY this JSON (no markdown fences, no explanation):
       "angle": "question-based"
     }}
   ],
-  "trend_source": "Which headline or trend inspired this topic"
+  "trend_source": "Which headline or trend inspired this topic",
+  "bg_prompt": "Pollinations.ai image prompt for an engaging background that visually conveys the topic message"
 }}
 
 Rules:
@@ -190,6 +191,7 @@ Rules:
 - EXACTLY 5 hashtags per variant — pick from the trending/evergreen lists above, prioritize currently trending ones
 - Each variant should use a DIFFERENT mix of hashtags to test what performs best
 - Score each variant honestly 1-10 on viral potential
+- bg_prompt: create an engaging image prompt that VISUALLY CONVEYS the topic message — use real-world metaphors, human elements, or concept visualizations that hook the viewer (e.g. "a person surrounded by floating holographic AI agent interfaces, vibrant neon glow, dark studio, cinematic vertical 4k"). Avoid generic abstract patterns — the image should tell the story of the topic at a glance.
 - Output raw JSON only"""
 
     log(f"Calling Claude ({CLAUDE_MODEL})...")
@@ -243,6 +245,7 @@ def main():
         "hashtags": best["hashtags"],
         "cta": content["cta"],
         "caption": best["caption"] + "\n\n" + best["hashtags"],
+        "bg_prompt": content.get("bg_prompt", ""),
         "ai_generated": True,
         "trend_source": content.get("trend_source", ""),
         "generated_date": str(datetime.date.today()),

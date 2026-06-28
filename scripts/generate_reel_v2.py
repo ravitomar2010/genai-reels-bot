@@ -83,7 +83,15 @@ TOPIC_PROMPTS = {
     10: "AI hallucination abstract mind brain digital glitch dark cinematic vertical",
 }
 
+_custom_bg_prompt = None
+
+def set_custom_bg_prompt(prompt):
+    global _custom_bg_prompt
+    _custom_bg_prompt = prompt
+
 def get_bg_prompt(topic_id, theme_idx):
+    if _custom_bg_prompt:
+        return _custom_bg_prompt
     if topic_id in TOPIC_PROMPTS:
         return TOPIC_PROMPTS[topic_id]
     return BG_PROMPTS.get(theme_idx, BG_PROMPTS[0])
@@ -196,11 +204,24 @@ def apply_fade(img, alpha):
     black = Image.new("RGB",(W,H),(0,0,0))
     return Image.blend(black, img, max(0,min(1,alpha)))
 
+def apply_ken_burns(img, t, zoom_in=True, strength=0.08):
+    """Slow cinematic zoom in or out (Ken Burns effect)."""
+    if zoom_in:
+        scale = 1.0 + strength * ease_out(t)
+    else:
+        scale = 1.0 + strength * (1.0 - ease_out(t))
+    new_w = int(W * scale)
+    new_h = int(H * scale)
+    resized = img.resize((new_w, new_h), Image.LANCZOS)
+    left = (new_w - W) // 2
+    top  = (new_h - H) // 2
+    return resized.crop((left, top, left + W, top + H))
+
 
 # ── Slide renderers ────────────────────────────────────────────────────────
 
 def make_hook_frame(bg, topic, theme, handle, t):
-    img  = bg.copy()
+    img  = apply_ken_burns(bg, t, zoom_in=True)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, int(H*0.28+pulse*15), 350, theme["glow"], 10)
     draw = ImageDraw.Draw(img)
@@ -251,7 +272,7 @@ def make_hook_frame(bg, topic, theme, handle, t):
 
 
 def make_title_frame(bg, topic, theme, handle, t):
-    img  = bg.copy()
+    img  = apply_ken_burns(bg, t, zoom_in=False)
     img  = draw_glow_overlay(img, W//2, H//3, 300, theme["glow"], 8)
     draw = ImageDraw.Draw(img)
 
@@ -295,7 +316,7 @@ def make_title_frame(bg, topic, theme, handle, t):
 
 
 def make_point_frame(bg, topic, theme, handle, idx, t, total):
-    img  = bg.copy()
+    img  = apply_ken_burns(bg, t, zoom_in=(idx % 2 == 0))
     pulse = math.sin(t*math.pi*1.5)*0.5+0.5
     cx,cy = W//2, 400
     img  = draw_glow_overlay(img, cx, cy, int(130+pulse*20), theme["glow"], 8)
@@ -348,7 +369,7 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
 
 
 def make_cta_frame(bg, topic, theme, handle, t):
-    img  = bg.copy()
+    img  = apply_ken_burns(bg, t, zoom_in=True, strength=0.10)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, H-200, int(180+pulse*50), theme["accent"], 10)
     draw = ImageDraw.Draw(img)
@@ -449,6 +470,8 @@ def generate(topic_id=None):
 
     if ai_topic:
         topic = ai_topic
+        if topic.get("bg_prompt"):
+            set_custom_bg_prompt(topic["bg_prompt"])
         print(f"  Using AI-generated topic: {topic['title']}")
     elif topic_id:
         topic = next((t for t in topics if t["id"]==int(topic_id)), topics[0])
