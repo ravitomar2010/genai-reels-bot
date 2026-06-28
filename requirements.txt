@@ -1,3 +1,4 @@
 Pillow
 requests
 anthropic
+edge-tts

@@ -8,7 +8,7 @@ Instagram Reel Generator v2 — Animated + AI Backgrounds (Pollinations.ai)
 - 12 FPS smooth motion
 """
 
-import os, sys, json, subprocess, textwrap, math, datetime, re, urllib.request, shutil
+import os, sys, json, subprocess, textwrap, math, datetime, re, urllib.request, shutil, asyncio
 from pathlib import Path
 from io import BytesIO
 
@@ -204,6 +204,49 @@ def apply_fade(img, alpha):
     black = Image.new("RGB",(W,H),(0,0,0))
     return Image.blend(black, img, max(0,min(1,alpha)))
 
+def draw_follow_badge(img, handle, theme, t, position="bottom"):
+    """Animated 'Follow @handle' branded badge on every slide."""
+    draw = ImageDraw.Draw(img)
+    a = ease_out(min(1, max(0, (t - 0.3) * 3)))
+    if a <= 0:
+        return img
+
+    label = f"Follow {handle}"
+    f_icon = fnt(FONT_BOLD, 32)
+    f_text = fnt(FONT_MED, 30)
+    icon_txt = "▶"
+    icon_w = int(f_icon.getlength(icon_txt))
+    label_w = int(f_text.getlength(label))
+    total_w = icon_w + 12 + label_w
+    pad_x, pad_y = 24, 14
+
+    if position == "bottom":
+        bx = (W - total_w) // 2 - pad_x
+        by = H - 130
+    else:
+        bx = W - total_w - pad_x * 2 - 20
+        by = 30
+
+    pulse = math.sin(t * math.pi * 3) * 0.15 + 0.85
+    badge_alpha = int(200 * a * pulse)
+
+    badge = Image.new("RGBA", (total_w + pad_x * 2, pad_y * 2 + 40), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(badge)
+    accent = theme["accent"]
+    bd.rounded_rectangle(
+        [0, 0, total_w + pad_x * 2, pad_y * 2 + 40], 24,
+        fill=(*accent, badge_alpha),
+    )
+
+    icon_c = (255, 255, 255, int(255 * a))
+    bd.text((pad_x, pad_y + 2), icon_txt, font=f_icon, fill=icon_c)
+    bd.text((pad_x + icon_w + 12, pad_y + 4), label, font=f_text, fill=icon_c)
+
+    img_rgba = img.convert("RGBA")
+    img_rgba.paste(badge, (bx, by), badge)
+    return img_rgba.convert("RGB")
+
+
 def apply_ken_burns(img, t, zoom_in=True, strength=0.08):
     """Slow cinematic zoom in or out (Ken Burns effect)."""
     if zoom_in:
@@ -259,15 +302,11 @@ def make_hook_frame(bg, topic, theme, handle, t):
     draw_reveal(draw,lines,H//2-bh//2+80,fnt(FONT_BOLD,76),(255,255,255),
                 max(0,(t-0.22)),delay_per_line=0.10,reveal_dur=0.15)
 
-    # Handle
-    ha = ease_out(min(1,max(0,(t-0.65)/0.2)))
-    hf = fnt(FONT_MED,36)
-    hw = int(hf.getlength(handle))
-    draw.text(((W-hw)//2,H-140),handle,font=hf,fill=blend_c((0,0,0),theme["sub"],ha))
-
     # Progress bar
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
     rrect(draw,[40,H-58,40+int((W-80)*1/7),H-50],4,theme["accent"])
+
+    img = draw_follow_badge(img, handle, theme, t)
     return img
 
 
@@ -305,13 +344,10 @@ def make_title_frame(bg, topic, theme, handle, t):
     da   = ease_out(min(1,max(0,(t-0.5)*3)))
     draw.text(((W-dw)//2,int(H*0.68)),dtxt,font=df,fill=blend_c((0,0,0),theme["sub"],da))
 
-    hf  = fnt(FONT_MED,36)
-    hw  = int(hf.getlength(handle))
-    ha  = ease_out(min(1,max(0,(t-0.65)*3)))
-    draw.text(((W-hw)//2,H-140),handle,font=hf,fill=blend_c((0,0,0),theme["sub"],ha))
-
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
     rrect(draw,[40,H-58,40+int((W-80)*2/7),H-50],4,theme["accent"])
+
+    img = draw_follow_badge(img, handle, theme, t)
     return img
 
 
@@ -357,14 +393,11 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
     draw_reveal(draw,lines,mid_y,fnt(FONT_BOLD,70),(255,255,255),
                 max(0,(t-0.28)),delay_per_line=0.12,reveal_dur=0.18)
 
-    hf  = fnt(FONT_MED,36)
-    hw  = int(hf.getlength(handle))
-    ha  = ease_out(min(1,max(0,(t-0.6)*3)))
-    draw.text(((W-hw)//2,H-140),handle,font=hf,fill=blend_c((0,0,0),theme["sub"],ha))
-
     prog = (idx+3)/7
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
     rrect(draw,[40,H-58,40+int((W-80)*prog),H-50],4,theme["accent"])
+
+    img = draw_follow_badge(img, handle, theme, t)
     return img
 
 
@@ -432,22 +465,81 @@ def render_slide(bg, frame_fn, duration_s, fade_in=0.18, fade_out=0.18):
     return frames
 
 
+# ── TTS Voiceover ─────────────────────────────────────────────────────────
+def generate_voiceover(topic, output_mp3):
+    """Generate MP3 voiceover from topic content using edge-tts."""
+    try:
+        import edge_tts
+    except ImportError:
+        print("  edge-tts not installed, skipping voiceover")
+        return None
+
+    script_parts = [
+        strip_emoji(topic["hook"].replace("\n", ". ")),
+        strip_emoji(topic["title"]),
+    ]
+    for p in topic["points"]:
+        script_parts.append(strip_emoji(p))
+    script_parts.append(strip_emoji(topic["cta"]))
+    script = ". ".join(script_parts)
+
+    print(f"  Generating voiceover ({len(script)} chars)...")
+
+    async def _tts():
+        voice = "en-US-GuyNeural"
+        communicate = edge_tts.Communicate(script, voice, rate="-5%", pitch="+2Hz")
+        await communicate.save(str(output_mp3))
+
+    asyncio.run(_tts())
+
+    if output_mp3.exists() and output_mp3.stat().st_size > 0:
+        print(f"  Voiceover saved: {output_mp3.name}")
+        return output_mp3
+    return None
+
+
 # ── Build video ────────────────────────────────────────────────────────────
-def build_video(all_frames, output_path):
+def build_video(all_frames, output_path, voiceover_path=None):
     for f in FRAMES.glob("*.png"):
         try: f.unlink()
         except: pass
     print(f"  Saving {len(all_frames)} frames...")
     for i,img in enumerate(all_frames):
         img.save(str(FRAMES/f"f{i:05d}.png"))
-    cmd = ["ffmpeg","-y","-framerate",str(FPS),"-i",str(FRAMES/"f%05d.png"),
-           "-vf","scale=1080:1920,format=yuv420p","-c:v","libx264",
-           "-preset","fast","-crf","22","-r",str(FPS),"-movflags","+faststart",
-           str(output_path)]
-    r = subprocess.run(cmd,capture_output=True,text=True,timeout=180)
-    if r.returncode!=0:
-        print("ffmpeg error:",r.stderr[-1000:])
-        raise RuntimeError("ffmpeg failed")
+
+    if voiceover_path and voiceover_path.exists():
+        silent_path = Path("/tmp/reel_silent.mp4")
+        cmd_silent = ["ffmpeg","-y","-framerate",str(FPS),"-i",str(FRAMES/"f%05d.png"),
+                      "-vf","scale=1080:1920,format=yuv420p","-c:v","libx264",
+                      "-preset","fast","-crf","22","-r",str(FPS),
+                      str(silent_path)]
+        r = subprocess.run(cmd_silent,capture_output=True,text=True,timeout=180)
+        if r.returncode!=0:
+            print("ffmpeg silent video error:",r.stderr[-500:])
+            raise RuntimeError("ffmpeg failed (silent)")
+
+        print("  Merging voiceover with video...")
+        cmd_merge = ["ffmpeg","-y",
+                     "-i",str(silent_path),"-i",str(voiceover_path),
+                     "-c:v","copy","-c:a","aac","-b:a","128k",
+                     "-shortest","-movflags","+faststart",
+                     str(output_path)]
+        r = subprocess.run(cmd_merge,capture_output=True,text=True,timeout=120)
+        if r.returncode!=0:
+            print("ffmpeg merge error:",r.stderr[-500:])
+            print("  Falling back to video without audio")
+            shutil.copy2(str(silent_path), str(output_path))
+        try: silent_path.unlink()
+        except: pass
+    else:
+        cmd = ["ffmpeg","-y","-framerate",str(FPS),"-i",str(FRAMES/"f%05d.png"),
+               "-vf","scale=1080:1920,format=yuv420p","-c:v","libx264",
+               "-preset","fast","-crf","22","-r",str(FPS),"-movflags","+faststart",
+               str(output_path)]
+        r = subprocess.run(cmd,capture_output=True,text=True,timeout=180)
+        if r.returncode!=0:
+            print("ffmpeg error:",r.stderr[-1000:])
+            raise RuntimeError("ffmpeg failed")
     return output_path
 
 
@@ -514,7 +606,11 @@ def generate(topic_id=None):
 
     date_str = datetime.date.today().strftime("%Y%m%d")
     out_path = OUTDIR/f"reel_v2_{date_str}_topic{topic['id']}.mp4"
-    build_video(all_frames, out_path)
+
+    print("  Generating voiceover...")
+    vo_path = Path("/tmp/reel_voiceover.mp3")
+    voiceover = generate_voiceover(topic, vo_path)
+    build_video(all_frames, out_path, voiceover_path=voiceover)
 
     if topic.get("caption"):
         caption = topic["caption"]
