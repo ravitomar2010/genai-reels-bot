@@ -36,6 +36,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python3 scripts/ai_content_generator.py
 
+      - name: Verify fonts installed
+        run: |
+          echo "=== Checking Poppins fonts ==="
+          ls -la /usr/share/fonts/truetype/google-fonts/ || echo "google-fonts dir missing"
+          fc-list | grep -i poppins || echo "Poppins not in fc-list"
+          python3 -c "from PIL import ImageFont; f=ImageFont.truetype('/usr/share/fonts/truetype/google-fonts/Poppins-Bold.ttf',100); print(f'Font loaded OK: {f.getlength(\"Test\")}px wide')" || echo "FONT LOAD FAILED"
+
       - name: Generate Reel video
         run: python3 scripts/generate_reel_v2.py
 

@@ -73,9 +73,17 @@ FONT_BOLD  = _find_font("Poppins-Bold.ttf") or "Poppins-Bold.ttf"
 FONT_MED   = _find_font("Poppins-Medium.ttf") or "Poppins-Medium.ttf"
 FONT_REG   = _find_font("Poppins-Regular.ttf") or "Poppins-Regular.ttf"
 
+print(f"  Font Bold:    {FONT_BOLD}")
+print(f"  Font Medium:  {FONT_MED}")
+print(f"  Font Regular: {FONT_REG}")
+
 def fnt(path, size):
-    try:    return ImageFont.truetype(path, size)
-    except: return ImageFont.load_default()
+    try:
+        f = ImageFont.truetype(path, size)
+        return f
+    except Exception as e:
+        print(f"  WARNING: Font {path} size {size} failed ({e}), using default")
+        return ImageFont.load_default()
 
 def strip_emoji(t):
     return re.sub(r'[^\x00-\x7FÀ-ɏ‐-⁯ ]','',t).strip()
@@ -137,31 +145,44 @@ def fetch_ai_background(topic_id, theme_idx, theme):
            f"{urllib.request.quote(prompt)}"
            f"?width=1080&height=1920&nologo=true&seed={topic_id*7+42}&enhance=true")
     print(f"  Fetching AI background: {prompt[:60]}...")
-    try:
-        import requests
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        img = Image.open(BytesIO(resp.content)).convert("RGB")
-        img = img.resize((W, H), Image.LANCZOS)
-        img.save(str(cache_path), quality=92)
-        print(f"  Background downloaded ({img.size})")
-        return img
-    except Exception as e:
-        print(f"  Pollinations unavailable ({e}), using gradient fallback")
-        return None
+    import requests as _req
+    for attempt in range(1, 3):
+        try:
+            resp = _req.get(url, timeout=90)
+            resp.raise_for_status()
+            img = Image.open(BytesIO(resp.content)).convert("RGB")
+            img = img.resize((W, H), Image.LANCZOS)
+            img.save(str(cache_path), quality=92)
+            print(f"  Background downloaded ({img.size})")
+            return img
+        except Exception as e:
+            print(f"  Pollinations attempt {attempt}/2 failed: {e}")
+            if attempt < 2:
+                import time; time.sleep(5)
+    print("  Using gradient fallback")
+    return None
 
 
 def make_gradient_bg(theme):
-    img = Image.new("RGB",(W,H), theme["bg"])
-    draw = ImageDraw.Draw(img)
-    # Radial-ish gradient via concentric ellipses
+    base = Image.new("RGBA",(W,H), (*theme["bg"], 255))
     glow = theme["glow"]
     for i in range(30, 0, -1):
-        alpha = int(20*(i/30)**2)
-        r = int(400*i/30)
+        ov = Image.new("RGBA",(W,H),(0,0,0,0))
+        d  = ImageDraw.Draw(ov)
+        alpha = int(60*(i/30)**2)
+        r = int(500*i/30)
         x,y = W//2, int(H*0.3)
-        draw.ellipse([x-r,y-r,x+r,y+r], fill=(*glow, alpha))
-    return img
+        d.ellipse([x-r,y-r,x+r,y+r], fill=(*glow, alpha))
+        base = Image.alpha_composite(base, ov)
+    ov2 = Image.new("RGBA",(W,H),(0,0,0,0))
+    d2  = ImageDraw.Draw(ov2)
+    accent = theme["accent"]
+    for i in range(20, 0, -1):
+        a = int(40*(i/20)**2)
+        r = int(350*i/20)
+        d2.ellipse([W//2-r,int(H*0.7)-r,W//2+r,int(H*0.7)+r], fill=(*accent, a))
+    base = Image.alpha_composite(base, ov2)
+    return base.convert("RGB")
 
 
 def prepare_background(topic_id, theme_idx, theme):
@@ -616,7 +637,7 @@ def generate(topic_id=None):
 
     all_frames = []
     print("  Slide 1/7: Hook")
-    all_frames += render_slide(bg, lambda b,t: make_hook_frame(b,topic,theme,handle,t), 4.0)
+    all_frames += render_slide(bg, lambda b,t: make_hook_frame(b,topic,theme,handle,t), 4.0, fade_in=0.0)
     print("  Slide 2/7: Title")
     all_frames += render_slide(bg, lambda b,t: make_title_frame(b,topic,theme,handle,t), 2.5)
     for i in range(npts):
