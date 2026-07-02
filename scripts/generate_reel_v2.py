@@ -8,7 +8,7 @@ Instagram Reel Generator v2 — Animated + AI Backgrounds (Pollinations.ai)
 - 12 FPS smooth motion
 """
 
-import os, sys, json, subprocess, textwrap, math, datetime, re, urllib.request, shutil, asyncio
+import os, sys, json, subprocess, textwrap, math, datetime, re, urllib.request, shutil, asyncio, random
 from pathlib import Path
 from io import BytesIO
 
@@ -186,18 +186,116 @@ def make_gradient_bg(theme):
 
 
 def prepare_background(topic_id, theme_idx, theme):
-    """Get AI bg, darken it, ready for text overlay."""
+    """Get AI bg — keep it vibrant, just slightly darkened for text."""
     ai_bg = fetch_ai_background(topic_id, theme_idx, theme)
 
     if ai_bg is None:
         return make_gradient_bg(theme)
 
     from PIL import ImageEnhance
-    ai_bg = ImageEnhance.Brightness(ai_bg).enhance(0.30)
-    ai_bg = ImageEnhance.Color(ai_bg).enhance(0.6)
-    tint = Image.new("RGB",(W,H), theme["bg"])
-    ai_bg = Image.blend(ai_bg, tint, 0.50)
+    ai_bg = ImageEnhance.Brightness(ai_bg).enhance(0.55)
+    ai_bg = ImageEnhance.Color(ai_bg).enhance(1.2)
+    ai_bg = ImageEnhance.Contrast(ai_bg).enhance(1.1)
     return ai_bg
+
+
+# ── Engaging card backgrounds (Fable 5 style) ─────────────────────────────
+
+def make_glass_card(w, h, theme, radius=44, tint_alpha=140):
+    """True glassmorphism — semi-transparent so AI background glows through."""
+    card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(card)
+    accent = theme["accent"]
+
+    # Semi-transparent dark base — shows background through
+    cd.rounded_rectangle([0, 0, w, h], radius, fill=(10, 8, 20, tint_alpha))
+
+    # Bright shimmer at top (glass reflection)
+    for i in range(min(h // 5, 120)):
+        a = int(45 * (1 - i / (h // 5)) ** 2)
+        cd.line([(radius, i), (w - radius, i)], fill=(255, 255, 255, a))
+
+    # Glowing accent border
+    for thickness in range(3, 0, -1):
+        border_a = int(255 * (thickness / 3) ** 2)
+        cd.rounded_rectangle([thickness, thickness, w - thickness, h - thickness],
+                              max(1, radius - thickness),
+                              outline=(*accent, border_a), width=1)
+    return card
+
+
+def make_gradient_card(w, h, theme, radius=44):
+    """Glass card with accent-colored top glow — shows background through."""
+    accent = theme["accent"]
+
+    # Semi-transparent base
+    base = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(base)
+    bd.rounded_rectangle([0, 0, w, h], radius, fill=(8, 6, 18, 150))
+
+    # Accent glow at top portion
+    for y in range(min(h // 2, 300)):
+        t = y / (h // 2)
+        a = int(80 * (1 - t) ** 2)
+        r, g, b = accent
+        base.putpixel((0, y), (r, g, b, a))  # temp placeholder
+
+    ov = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ovd = ImageDraw.Draw(ov)
+    for y in range(min(h // 2, 300)):
+        t = y / (h // 2)
+        a = int(90 * (1 - t) ** 2)
+        ovd.line([(radius, y), (w - radius, y)], fill=(*accent, a))
+
+    base = Image.alpha_composite(base, ov)
+
+    # Bright border
+    bd2 = ImageDraw.Draw(base)
+    for i in range(3, 0, -1):
+        ba = int(255 * (i / 3) ** 2)
+        bd2.rounded_rectangle([i, i, w - i, h - i], max(1, radius - i),
+                               outline=(*accent, ba), width=1)
+
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w, h], radius, fill=255)
+    base.putalpha(mask)
+    return base
+
+
+def make_neon_card(w, h, theme, radius=44):
+    """Translucent card with bright neon glow border."""
+    card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(card)
+    accent = theme["accent"]
+
+    # Semi-transparent base — background glows through
+    cd.rounded_rectangle([0, 0, w, h], radius, fill=(5, 5, 15, 160))
+
+    # Neon glow layers — bright
+    for i in range(12, 0, -1):
+        a = int(100 * (i / 12) ** 2)
+        cd.rounded_rectangle([i, i, w - i, h - i], max(1, radius - i),
+                              outline=(*accent, a), width=2)
+
+    # Bright solid inner border
+    cd.rounded_rectangle([2, 2, w - 2, h - 2], radius - 2,
+                          outline=(*accent, 255), width=2)
+
+    # Corner glow dots
+    dot_r = 8
+    for cx, cy in [(radius, radius), (w-radius, radius), (radius, h-radius), (w-radius, h-radius)]:
+        for dr in range(dot_r, 0, -2):
+            da = int(200 * (dr / dot_r) ** 2)
+            cd.ellipse([cx-dr, cy-dr, cx+dr, cy+dr], fill=(*accent, da))
+
+    return card
+
+
+def paste_card(img, card, x, y):
+    """Alpha-composite a card onto img at position (x, y)."""
+    base = img.convert("RGBA")
+    base.paste(card, (x, y), card)
+    return base.convert("RGB")
 
 
 # ── Easing & helpers ───────────────────────────────────────────────────────
@@ -315,19 +413,174 @@ def apply_ken_burns(img, t, zoom_in=True, strength=0.08):
     return resized.crop((left, top, left + W, top + H))
 
 
+# ── VFX Effects ───────────────────────────────────────────────────────────
+
+_particles = None
+
+def _init_particles(n=35):
+    global _particles
+    rng = random.Random(42)
+    _particles = []
+    for _ in range(n):
+        _particles.append({
+            "x": rng.randint(0, W),
+            "y": rng.randint(0, H),
+            "r": rng.uniform(2, 8),
+            "speed": rng.uniform(40, 120),
+            "drift": rng.uniform(-20, 20),
+            "phase": rng.uniform(0, math.pi * 2),
+            "brightness": rng.uniform(0.4, 1.0),
+        })
+
+def draw_particles(img, theme, t, intensity=1.0):
+    if _particles is None:
+        _init_particles()
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    accent = theme["accent"]
+    for p in _particles:
+        px = (p["x"] + p["drift"] * t * 3) % W
+        py = (p["y"] - p["speed"] * t * 3) % H
+        pulse = (math.sin(t * math.pi * 4 + p["phase"]) * 0.3 + 0.7)
+        alpha = int(120 * p["brightness"] * pulse * intensity)
+        r = p["r"] * (0.8 + pulse * 0.4)
+        glow_r = r * 3
+        d.ellipse([px - glow_r, py - glow_r, px + glow_r, py + glow_r],
+                  fill=(*accent, int(alpha * 0.2)))
+        d.ellipse([px - r, py - r, px + r, py + r],
+                  fill=(255, 255, 255, alpha))
+    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+
+def draw_light_sweep(img, t, color=(255, 255, 255), width=120):
+    if t < 0 or t > 1:
+        return img
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    sweep_x = int(-width + (W + width * 2) * ease_out(t))
+    for i in range(width, 0, -2):
+        a = int(35 * (i / width) ** 2)
+        x = sweep_x + (width - i)
+        d.line([(x, 0), (x - H // 3, H)], fill=(*color[:3], a), width=3)
+    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+
+def draw_pulse_ring(img, cx, cy, t, color, max_r=200):
+    if t < 0 or t > 1:
+        return img
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    r = int(max_r * ease_out(t))
+    alpha = int(180 * (1 - t))
+    thickness = max(2, int(6 * (1 - t)))
+    if r > 4 and alpha > 5:
+        d.ellipse([cx - r, cy - r, cx + r, cy + r],
+                  outline=(*color[:3], alpha), width=thickness)
+        r2 = int(r * 0.7)
+        a2 = int(alpha * 0.5)
+        if r2 > 4:
+            d.ellipse([cx - r2, cy - r2, cx + r2, cy + r2],
+                      outline=(*color[:3], a2), width=max(1, thickness - 1))
+    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+
+def draw_text_slam(draw, text, font, y_target, t, color=(255, 255, 255)):
+    if t <= 0:
+        return
+    lw = int(font.getlength(text))
+    x = (W - lw) // 2
+    if t < 0.3:
+        p = ease_out(t / 0.3)
+        scale = 2.0 - 1.0 * p
+        alpha_val = p
+        y = y_target - int(80 * (1 - p))
+    elif t < 0.45:
+        shake_t = (t - 0.3) / 0.15
+        shake = int(4 * math.sin(shake_t * math.pi * 6) * (1 - shake_t))
+        x += shake
+        scale = 1.0
+        alpha_val = 1.0
+        y = y_target
+    else:
+        scale = 1.0
+        alpha_val = 1.0
+        y = y_target
+    if alpha_val > 0:
+        draw_text_shadow(draw, (x, y), text, font, color, shadow_offset=5)
+
+
+def draw_shimmer_line(img, y, t, theme, width_pct=0.6):
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    line_w = int(W * width_pct)
+    x_start = (W - line_w) // 2
+    shimmer_x = x_start + int(line_w * ((t * 2) % 1.0))
+    for i in range(60, 0, -1):
+        a = int(50 * (i / 60) ** 2)
+        sx = shimmer_x + (60 - i) - 30
+        if x_start <= sx <= x_start + line_w:
+            d.line([(sx, y), (sx, y + 3)], fill=(*theme["accent"], a), width=2)
+    d.line([(x_start, y), (x_start + line_w, y + 1)],
+           fill=(*theme["accent"], 100), width=2)
+    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+
+def draw_energy_border(img, t, theme, thickness=3):
+    ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    accent = theme["accent"]
+    progress = (t * 1.5) % 1.0
+    perimeter = 2 * (W + H)
+    glow_len = int(perimeter * 0.3)
+    start = int(perimeter * progress)
+    for i in range(glow_len):
+        pos = (start + i) % perimeter
+        fade = 1.0 - abs(i - glow_len / 2) / (glow_len / 2)
+        a = int(120 * fade ** 2)
+        if pos < W:
+            px, py = pos, 0
+        elif pos < W + H:
+            px, py = W - 1, pos - W
+        elif pos < 2 * W + H:
+            px, py = W - 1 - (pos - W - H), H - 1
+        else:
+            px, py = 0, H - 1 - (pos - 2 * W - H)
+        for t2 in range(thickness):
+            dx = t2 if px == 0 else (-t2 if px >= W - 1 else 0)
+            dy = t2 if py == 0 else (-t2 if py >= H - 1 else 0)
+            d.point((px + dx, py + dy), fill=(*accent, a))
+    return Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+
 # ── Slide renderers ────────────────────────────────────────────────────────
 
 def make_hook_frame(bg, topic, theme, handle, t):
-    img  = apply_ken_burns(bg, t, zoom_in=True)
+    img  = apply_ken_burns(bg, t, zoom_in=True, strength=0.12)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, int(H*0.28+pulse*15), 350, theme["glow"], 10)
 
-    # Dark overlay for text readability
-    ov = Image.new("RGBA",(W,H),(0,0,0,120))
+    # Subtle tinted overlay — not pure black
+    accent = theme["accent"]
+    bg = theme["bg"]
+    ov_r = min(20, bg[0] + accent[0] // 10)
+    ov_g = min(20, bg[1] + accent[1] // 10)
+    ov_b = min(20, bg[2] + accent[2] // 10)
+    ov = Image.new("RGBA",(W,H),(ov_r, ov_g, ov_b, 110))
     img = Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
+
+    # Floating particles
+    img = draw_particles(img, theme, t, intensity=0.8)
+
+    # Light sweep across screen (first 60% of slide)
+    sweep_t = (t - 0.05) / 0.55
+    img = draw_light_sweep(img, sweep_t, color=theme["accent"])
+
+    # Energy border
+    img = draw_energy_border(img, t, theme, thickness=3)
+
     draw = ImageDraw.Draw(img)
 
-    # Series pill
+    # Series pill — slides down
     pill_y = int(-80 + ease_out(min(1,t*3))*220)
     pf     = fnt(FONT_MED, 44)
     ptxt   = "GEN AI MASTER SERIES"
@@ -335,12 +588,33 @@ def make_hook_frame(bg, topic, theme, handle, t):
     rrect(draw,[(W-pw)//2-32,pill_y,(W+pw)//2+32,pill_y+66],33,theme["accent"])
     draw.text(((W-pw)//2,pill_y+12),ptxt,font=pf,fill=(255,255,255))
 
-    # Hook text — extra large
+    # Hook text — slam effect (zooms in and shakes)
     hook_font = fnt(FONT_BOLD, 110)
     lines = wrap_text(topic["hook"], hook_font, W-100)
     bh    = text_block_h(lines, hook_font, 28)
-    draw_reveal(draw, lines, H//2-bh//2, hook_font, (255,255,255),
-                max(0,(t-0.15)), delay_per_line=0.10, reveal_dur=0.15, gap=28)
+    base_y = H//2 - bh//2
+
+    slam_t = max(0, (t - 0.08))
+    for i, line in enumerate(lines):
+        line_t = max(0, slam_t - i * 0.12)
+        if line_t <= 0:
+            continue
+        lw = int(hook_font.getlength(line))
+        lx = (W - lw) // 2
+        ly = base_y + i * line_height(hook_font, 28)
+        if line_t < 0.15:
+            p = ease_out(line_t / 0.15)
+            ly = ly - int(60 * (1 - p))
+        elif line_t < 0.25:
+            shake = int(3 * math.sin((line_t - 0.15) / 0.10 * math.pi * 8) * (1 - (line_t - 0.15) / 0.10))
+            lx += shake
+        draw_text_shadow(draw, (lx, ly), line, hook_font, (255,255,255), shadow_offset=5)
+
+    # Pulse ring on text reveal
+    ring_t = max(0, (t - 0.20)) * 2.5
+    if ring_t > 0:
+        img = draw_pulse_ring(img, W // 2, H // 2, min(1, ring_t), theme["accent"], max_r=300)
+        draw = ImageDraw.Draw(img)
 
     # Progress bar
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
@@ -354,13 +628,12 @@ def make_title_frame(bg, topic, theme, handle, t):
     img  = apply_ken_burns(bg, t, zoom_in=False)
     img  = draw_glow_overlay(img, W//2, H//3, 300, theme["glow"], 8)
 
-    # Frosted card — high opacity
-    card = Image.new("RGBA",(W-60,int(H*0.55)),(0,0,0,0))
-    cd   = ImageDraw.Draw(card)
-    cd.rounded_rectangle([0,0,W-60,int(H*0.55)],44,fill=(0,0,0,230))
-    img_rgba = img.convert("RGBA")
-    img_rgba.paste(card,(30,int(H*0.22)),card)
-    img  = img_rgba.convert("RGB")
+    # Glassmorphism card — theme-tinted, not black
+    card = make_glass_card(W-60, int(H*0.55), theme, radius=44, tint_alpha=190)
+    img  = paste_card(img, card, 30, int(H*0.22))
+
+    img = draw_particles(img, theme, t, intensity=0.5)
+
     draw = ImageDraw.Draw(img)
 
     lf   = fnt(FONT_BOLD,46)
@@ -370,6 +643,10 @@ def make_title_frame(bg, topic, theme, handle, t):
 
     bw = int(160*ease_out(min(1,max(0,(t-0.15)*4))))
     if bw>0: rrect(draw,[(W-bw)//2,int(H*0.28)+62,(W+bw)//2,int(H*0.28)+72],4,theme["accent"])
+
+    # Shimmer line under label
+    img = draw_shimmer_line(img, int(H*0.28)+72, t, theme, width_pct=0.3)
+    draw = ImageDraw.Draw(img)
 
     title_font = fnt(FONT_BOLD, 110)
     lines  = wrap_text(topic["title"], title_font, W-180)
@@ -396,6 +673,9 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
     pulse = math.sin(t*math.pi*1.5)*0.5+0.5
     cx,cy = W//2, 350
     img  = draw_glow_overlay(img, cx, cy, int(130+pulse*20), theme["glow"], 8)
+
+    img = draw_particles(img, theme, t + idx * 0.5, intensity=0.4)
+
     draw = ImageDraw.Draw(img)
 
     # Number circle
@@ -408,22 +688,24 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
         nw  = int(nf.getlength(nt)); nb = nf.getbbox(nt)
         draw.text((cx-nw//2,cy-nb[3]//2-nb[1]),nt,font=nf,fill=(255,255,255))
 
+    # Pulse ring when number appears
+    ring_t = max(0, t * 4 - 0.5)
+    if 0 < ring_t < 1:
+        img = draw_pulse_ring(img, cx, cy, ring_t, theme["accent"], max_r=200)
+        draw = ImageDraw.Draw(img)
+
     cf   = fnt(FONT_BOLD,44)
     ctxt = f"of {total}"
     cw   = int(cf.getlength(ctxt))
     ca   = ease_out(min(1,max(0,(t-0.12)*4)))
     draw_text_shadow(draw, ((W-cw)//2,500), ctxt, cf, blend_c((0,0,0),theme["sub"],ca))
 
-    # Frosted card — solid dark
+    # Gradient card — slides up
     ct  = ease_out(min(1,max(0,(t-0.1)*3)))
     cy2 = int(620 + (1-ct)*200)
     card_h = H-cy2-120
-    card = Image.new("RGBA",(W-60,card_h),(0,0,0,0))
-    cd   = ImageDraw.Draw(card)
-    cd.rounded_rectangle([0,0,W-60,card_h],44,fill=(0,0,0,235))
-    img_rgba = img.convert("RGBA")
-    img_rgba.paste(card,(30,cy2),card)
-    img  = img_rgba.convert("RGB")
+    card = make_gradient_card(W-60, card_h, theme, radius=44)
+    img  = paste_card(img, card, 30, cy2)
     draw = ImageDraw.Draw(img)
 
     # Point text — big and bold
@@ -448,13 +730,14 @@ def make_cta_frame(bg, topic, theme, handle, t):
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, H//2, int(250+pulse*50), theme["accent"], 10)
 
-    # Full dark overlay
-    card = Image.new("RGBA",(W-40,int(H*0.75)),(0,0,0,0))
-    cd   = ImageDraw.Draw(card)
-    cd.rounded_rectangle([0,0,W-40,int(H*0.75)],50,fill=(0,0,0,235))
-    img_rgba = img.convert("RGBA")
-    img_rgba.paste(card,(20,int(H*0.10)),card)
-    img  = img_rgba.convert("RGB")
+    # Neon card on CTA — premium Instagram look
+    card = make_neon_card(W-40, int(H*0.75), theme, radius=50)
+    img  = paste_card(img, card, 20, int(H*0.10))
+
+    # Heavy particles + energy border on CTA
+    img = draw_particles(img, theme, t, intensity=1.2)
+    img = draw_energy_border(img, t, theme, thickness=4)
+
     draw = ImageDraw.Draw(img)
 
     tf   = fnt(FONT_BOLD,64)
@@ -466,6 +749,10 @@ def make_cta_frame(bg, topic, theme, handle, t):
 
     bw = int(160*ease_out(min(1,max(0,(t-0.12)*4))))
     if bw>0: rrect(draw,[(W-bw)//2,int(H*0.16)+76,(W+bw)//2,int(H*0.16)+86],4,theme["accent"])
+
+    # Shimmer under "FOLLOW FOR MORE"
+    img = draw_shimmer_line(img, int(H*0.16)+86, t, theme, width_pct=0.4)
+    draw = ImageDraw.Draw(img)
 
     cta_font = fnt(FONT_BOLD, 96)
     lines  = wrap_text(topic["cta"], cta_font, W-160)
@@ -490,6 +777,12 @@ def make_cta_frame(bg, topic, theme, handle, t):
     rrect(draw,[hbx,H-280,hbx+hw+80,H-170],36,theme["accent"])
     hbt = ease_out(min(1,max(0,(t-0.5)*3)))
     draw.text(((W-hw)//2,H-275),handle,font=hf,fill=blend_c(theme["bg"],(255,255,255),hbt))
+
+    # Pulse ring on handle button
+    ring_t = max(0, (t - 0.55)) * 3
+    if 0 < ring_t < 1:
+        img = draw_pulse_ring(img, W // 2, H - 225, ring_t, theme["accent"], max_r=160)
+        draw = ImageDraw.Draw(img)
 
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
     rrect(draw,[40,H-58,W-40,H-50],4,theme["accent"])
