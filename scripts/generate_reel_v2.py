@@ -5,10 +5,10 @@ Instagram Reel Generator v2 — Animated + AI Backgrounds (Pollinations.ai)
 - Text reveal animations (line by line)
 - Fade in/out transitions
 - Glowing accent elements
-- 12 FPS smooth motion
+- 30 FPS, per-slide voiceover sync, loudnorm audio
 """
 
-import os, sys, json, subprocess, textwrap, math, datetime, re, urllib.request, shutil, asyncio, random
+import os, sys, json, subprocess, textwrap, math, datetime, re, urllib.parse, shutil, asyncio, random
 from pathlib import Path
 from io import BytesIO
 
@@ -26,7 +26,7 @@ BG_CACHE  = REPO_ROOT / "bg_cache"
 BG_CACHE.mkdir(exist_ok=True)
 
 W, H  = 1080, 1920
-FPS   = 12
+FPS   = 30
 
 _FONT_SEARCH_DIRS = [
     "/usr/share/fonts/truetype/google-fonts",
@@ -142,7 +142,7 @@ def fetch_ai_background(topic_id, theme_idx, theme):
 
     prompt = get_bg_prompt(topic_id, theme_idx)
     url = (f"https://image.pollinations.ai/prompt/"
-           f"{urllib.request.quote(prompt)}"
+           f"{urllib.parse.quote(prompt)}"
            f"?width=1080&height=1920&nologo=true&seed={topic_id*7+42}&enhance=true")
     print(f"  Fetching AI background: {prompt[:60]}...")
     import requests as _req
@@ -151,7 +151,7 @@ def fetch_ai_background(topic_id, theme_idx, theme):
             resp = _req.get(url, timeout=90)
             resp.raise_for_status()
             img = Image.open(BytesIO(resp.content)).convert("RGB")
-            img = img.resize((W, H), Image.LANCZOS)
+            img = img.resize((W, H), Image.BILINEAR)
             img.save(str(cache_path), quality=92)
             print(f"  Background downloaded ({img.size})")
             return img
@@ -407,7 +407,7 @@ def apply_ken_burns(img, t, zoom_in=True, strength=0.08):
         scale = 1.0 + strength * (1.0 - ease_out(t))
     new_w = int(W * scale)
     new_h = int(H * scale)
-    resized = img.resize((new_w, new_h), Image.LANCZOS)
+    resized = img.resize((new_w, new_h), Image.BILINEAR)
     left = (new_w - W) // 2
     top  = (new_h - H) // 2
     return resized.crop((left, top, left + W, top + H))
@@ -554,7 +554,7 @@ def draw_energy_border(img, t, theme, thickness=3):
 
 # ── Slide renderers ────────────────────────────────────────────────────────
 
-def make_hook_frame(bg, topic, theme, handle, t):
+def make_hook_frame(bg, topic, theme, handle, t, slide_idx=0, total_slides=7):
     img  = apply_ken_burns(bg, t, zoom_in=True, strength=0.12)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, int(H*0.28+pulse*15), 350, theme["glow"], 10)
@@ -618,18 +618,17 @@ def make_hook_frame(bg, topic, theme, handle, t):
 
     # Progress bar
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
-    rrect(draw,[40,H-58,40+int((W-80)*1/7),H-50],4,theme["accent"])
+    rrect(draw,[40,H-58,40+int((W-80)*(slide_idx+1)/total_slides),H-50],4,theme["accent"])
 
     img = draw_follow_badge(img, handle, theme, t)
     return img
 
 
-def make_title_frame(bg, topic, theme, handle, t):
+def make_title_frame(bg, topic, theme, handle, t, slide_idx=1, total_slides=7, static_card=None):
     img  = apply_ken_burns(bg, t, zoom_in=False)
     img  = draw_glow_overlay(img, W//2, H//3, 300, theme["glow"], 8)
 
-    # Glassmorphism card — theme-tinted, not black
-    card = make_glass_card(W-60, int(H*0.55), theme, radius=44, tint_alpha=190)
+    card = static_card if static_card is not None else make_glass_card(W-60, int(H*0.55), theme, radius=44, tint_alpha=190)
     img  = paste_card(img, card, 30, int(H*0.22))
 
     img = draw_particles(img, theme, t, intensity=0.5)
@@ -662,13 +661,13 @@ def make_title_frame(bg, topic, theme, handle, t):
                      blend_c((0,0,0),theme["sub"],da))
 
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
-    rrect(draw,[40,H-58,40+int((W-80)*2/7),H-50],4,theme["accent"])
+    rrect(draw,[40,H-58,40+int((W-80)*(slide_idx+1)/total_slides),H-50],4,theme["accent"])
 
     img = draw_follow_badge(img, handle, theme, t)
     return img
 
 
-def make_point_frame(bg, topic, theme, handle, idx, t, total):
+def make_point_frame(bg, topic, theme, handle, idx, t, total, slide_idx=2, total_slides=7, static_card=None):
     img  = apply_ken_burns(bg, t, zoom_in=(idx % 2 == 0))
     pulse = math.sin(t*math.pi*1.5)*0.5+0.5
     cx,cy = W//2, 350
@@ -700,12 +699,18 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
     ca   = ease_out(min(1,max(0,(t-0.12)*4)))
     draw_text_shadow(draw, ((W-cw)//2,500), ctxt, cf, blend_c((0,0,0),theme["sub"],ca))
 
-    # Gradient card — slides up
-    ct  = ease_out(min(1,max(0,(t-0.1)*3)))
-    cy2 = int(620 + (1-ct)*200)
-    card_h = H-cy2-120
-    card = make_gradient_card(W-60, card_h, theme, radius=44)
-    img  = paste_card(img, card, 30, cy2)
+    # Gradient card — slides up; reuse pre-built card when settled
+    ct   = ease_out(min(1, max(0, (t-0.1)*3)))
+    cy2  = int(620 + (1-ct)*200)
+    settled = ct >= 0.999
+    if static_card is not None and settled:
+        card   = static_card
+        card_h = H - 620 - 120
+        img    = paste_card(img, card, 30, 620)
+    else:
+        card_h = H - cy2 - 120
+        card   = static_card if static_card is not None else make_gradient_card(W-60, card_h, theme, radius=44)
+        img    = paste_card(img, card, 30, cy2)
     draw = ImageDraw.Draw(img)
 
     # Point text — big and bold
@@ -717,21 +722,19 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total):
     draw_reveal(draw, lines, mid_y, pt_font, (255,255,255),
                 max(0,(t-0.25)), delay_per_line=0.12, reveal_dur=0.18, gap=22)
 
-    prog = (idx+3)/7
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
-    rrect(draw,[40,H-58,40+int((W-80)*prog),H-50],4,theme["accent"])
+    rrect(draw,[40,H-58,40+int((W-80)*(slide_idx+1)/total_slides),H-50],4,theme["accent"])
 
     img = draw_follow_badge(img, handle, theme, t)
     return img
 
 
-def make_cta_frame(bg, topic, theme, handle, t):
+def make_cta_frame(bg, topic, theme, handle, t, slide_idx=6, total_slides=7, static_card=None):
     img  = apply_ken_burns(bg, t, zoom_in=True, strength=0.10)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, H//2, int(250+pulse*50), theme["accent"], 10)
 
-    # Neon card on CTA — premium Instagram look
-    card = make_neon_card(W-40, int(H*0.75), theme, radius=50)
+    card = static_card if static_card is not None else make_neon_card(W-40, int(H*0.75), theme, radius=50)
     img  = paste_card(img, card, 20, int(H*0.10))
 
     # Heavy particles + energy border on CTA
@@ -785,7 +788,7 @@ def make_cta_frame(bg, topic, theme, handle, t):
         draw = ImageDraw.Draw(img)
 
     rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
-    rrect(draw,[40,H-58,W-40,H-50],4,theme["accent"])
+    rrect(draw,[40,H-58,40+int((W-80)*(slide_idx+1)/total_slides),H-50],4,theme["accent"])
     return img
 
 
@@ -803,95 +806,168 @@ def render_slide(bg, frame_fn, duration_s, fade_in=0.18, fade_out=0.18):
 
 
 # ── TTS Voiceover ─────────────────────────────────────────────────────────
-def generate_voiceover(topic, output_mp3):
-    """Generate MP3 voiceover from topic content using edge-tts."""
+VOICE = "en-US-AndrewMultilingualNeural"
+
+
+def get_audio_duration(path):
+    """Return duration in seconds via ffprobe, or None on failure."""
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
+            capture_output=True, text=True, timeout=10,
+        )
+        return float(json.loads(r.stdout)["format"]["duration"])
+    except Exception as e:
+        print(f"  Could not measure audio duration: {e}")
+        return None
+
+
+def generate_segment_voiceovers(topic, seg_dir):
+    """Generate one MP3 per slide in parallel.
+    Returns list of (Path|None, duration_s) in slide order:
+    [hook, title, point0..N, cta]
+    """
     try:
         import edge_tts
     except ImportError:
         print("  edge-tts not installed, skipping voiceover")
         return None
 
-    script_parts = [
-        strip_emoji(topic["hook"].replace("\n", ". ")),
-        strip_emoji(topic["title"]),
+    slide_scripts = [
+        ("hook",  strip_emoji(topic["hook"].replace("\n", ". "))),
+        ("title", strip_emoji(topic["title"])),
     ]
-    for p in topic["points"]:
-        script_parts.append(strip_emoji(p))
-    script_parts.append(strip_emoji(topic["cta"]))
-    script = ". ".join(script_parts)
+    for i, p in enumerate(topic["points"]):
+        slide_scripts.append((f"point{i}", strip_emoji(p)))
+    slide_scripts.append(("cta", strip_emoji(topic["cta"])))
 
-    print(f"  Generating voiceover ({len(script)} chars)...")
+    print(f"  Generating {len(slide_scripts)} voiceover segments...")
 
-    async def _tts():
-        voice = "en-US-GuyNeural"
-        communicate = edge_tts.Communicate(script, voice, rate="+0%", volume="+100%", pitch="+2Hz")
-        await communicate.save(str(output_mp3))
+    async def _gen_all():
+        coros = []
+        for name, text in slide_scripts:
+            if text.strip():
+                out = seg_dir / f"seg_{name}.mp3"
+                comm = edge_tts.Communicate(text, VOICE, rate="+0%", pitch="+2Hz")
+                coros.append(comm.save(str(out)))
+        await asyncio.gather(*coros)
 
-    asyncio.run(_tts())
+    asyncio.run(_gen_all())
 
-    if output_mp3.exists() and output_mp3.stat().st_size > 0:
-        print(f"  Voiceover saved: {output_mp3.name}")
-        return output_mp3
+    results = []
+    for name, _ in slide_scripts:
+        out = seg_dir / f"seg_{name}.mp3"
+        if out.exists() and out.stat().st_size > 0:
+            dur = get_audio_duration(out) or 2.0
+            results.append((out, dur))
+            print(f"    {name}: {dur:.1f}s")
+        else:
+            print(f"    {name}: MISSING — using 2.0s default")
+            results.append((None, 2.0))
+    return results
+
+
+def concatenate_audio_segments(segments, output_path):
+    """Concatenate (path, dur) segment list into a single MP3."""
+    valid = [(p, d) for p, d in (segments or []) if p and Path(p).exists()]
+    if not valid:
+        return None
+    if len(valid) == 1:
+        shutil.copy2(str(valid[0][0]), str(output_path))
+        return Path(output_path)
+    inputs = []
+    for p, _ in valid:
+        inputs += ["-i", str(p)]
+    n  = len(valid)
+    fc = "".join(f"[{i}:a]" for i in range(n)) + f"concat=n={n}:v=0:a=1[outa]"
+    cmd = ["ffmpeg", "-y"] + inputs + [
+        "-filter_complex", fc, "-map", "[outa]",
+        "-c:a", "libmp3lame", "-b:a", "192k", str(output_path),
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        print("ffmpeg concat error:", r.stderr[-300:])
+        return None
+    return Path(output_path)
+
+
+def _find_music():
+    """Return first MP3/M4A/WAV in assets/music/, or None."""
+    music_dir = REPO_ROOT / "assets" / "music"
+    if not music_dir.exists():
+        return None
+    for pat in ("*.mp3", "*.m4a", "*.wav"):
+        files = sorted(music_dir.glob(pat))
+        if files:
+            return files[0]
     return None
 
 
 # ── Build video ────────────────────────────────────────────────────────────
-def get_audio_duration(mp3_path):
-    """Return duration in seconds using ffprobe, or None on failure."""
-    try:
-        r = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(mp3_path)],
-            capture_output=True, text=True, timeout=10,
-        )
-        info = json.loads(r.stdout)
-        return float(info["format"]["duration"])
-    except Exception as e:
-        print(f"  Could not measure audio duration: {e}")
-        return None
-
-
 def build_video(all_frames, output_path, voiceover_path=None):
     for f in FRAMES.glob("*.png"):
         try: f.unlink()
         except: pass
     print(f"  Saving {len(all_frames)} frames...")
-    for i,img in enumerate(all_frames):
-        img.save(str(FRAMES/f"f{i:05d}.png"))
+    for i, img in enumerate(all_frames):
+        img.save(str(FRAMES / f"f{i:05d}.png"))
 
-    if voiceover_path and voiceover_path.exists():
+    if voiceover_path and Path(voiceover_path).exists():
         silent_path = Path("/tmp/reel_silent.mp4")
-        cmd_silent = ["ffmpeg","-y","-framerate",str(FPS),"-i",str(FRAMES/"f%05d.png"),
-                      "-vf","scale=1080:1920,format=yuv420p","-c:v","libx264",
-                      "-preset","fast","-crf","22","-r",str(FPS),
-                      str(silent_path)]
-        r = subprocess.run(cmd_silent,capture_output=True,text=True,timeout=180)
-        if r.returncode!=0:
-            print("ffmpeg silent video error:",r.stderr[-500:])
+        cmd_silent = [
+            "ffmpeg", "-y", "-framerate", str(FPS),
+            "-i", str(FRAMES / "f%05d.png"),
+            "-vf", "scale=1080:1920,format=yuv420p",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "22", "-r", str(FPS),
+            str(silent_path),
+        ]
+        r = subprocess.run(cmd_silent, capture_output=True, text=True, timeout=300)
+        if r.returncode != 0:
+            print("ffmpeg silent video error:", r.stderr[-500:])
             raise RuntimeError("ffmpeg failed (silent)")
 
-        print("  Merging voiceover with video...")
-        # No -shortest: video is pre-extended to cover full audio duration
-        cmd_merge = ["ffmpeg","-y",
-                     "-i",str(silent_path),"-i",str(voiceover_path),
-                     "-c:v","copy","-c:a","aac","-b:a","192k",
-                     "-af","volume=4.0,aresample=44100","-ac","2",
-                     "-movflags","+faststart",
-                     str(output_path)]
-        r = subprocess.run(cmd_merge,capture_output=True,text=True,timeout=120)
-        if r.returncode!=0:
-            print("ffmpeg merge error:",r.stderr[-500:])
+        print("  Merging + normalising audio...")
+        music = _find_music()
+        if music:
+            print(f"  Mixing background music: {music.name}")
+            af = ("[1:a]loudnorm=I=-14:TP=-2:LRA=7[voice];"
+                  "[2:a]volume=-20dB,aloop=loop=-1:size=2e+09[music];"
+                  "[voice][music]amix=inputs=2:duration=first,aformat=channel_layouts=stereo[outa]")
+            cmd_merge = [
+                "ffmpeg", "-y",
+                "-i", str(silent_path), "-i", str(voiceover_path), "-i", str(music),
+                "-filter_complex", af,
+                "-map", "0:v", "-map", "[outa]",
+                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart", str(output_path),
+            ]
+        else:
+            cmd_merge = [
+                "ffmpeg", "-y",
+                "-i", str(silent_path), "-i", str(voiceover_path),
+                "-filter_complex", "[1:a]loudnorm=I=-14:TP=-2:LRA=7,aformat=channel_layouts=stereo[outa]",
+                "-map", "0:v", "-map", "[outa]",
+                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart", str(output_path),
+            ]
+        r = subprocess.run(cmd_merge, capture_output=True, text=True, timeout=180)
+        if r.returncode != 0:
+            print("ffmpeg merge error:", r.stderr[-500:])
             print("  Falling back to video without audio")
             shutil.copy2(str(silent_path), str(output_path))
         try: silent_path.unlink()
         except: pass
     else:
-        cmd = ["ffmpeg","-y","-framerate",str(FPS),"-i",str(FRAMES/"f%05d.png"),
-               "-vf","scale=1080:1920,format=yuv420p","-c:v","libx264",
-               "-preset","fast","-crf","22","-r",str(FPS),"-movflags","+faststart",
-               str(output_path)]
-        r = subprocess.run(cmd,capture_output=True,text=True,timeout=180)
-        if r.returncode!=0:
-            print("ffmpeg error:",r.stderr[-1000:])
+        cmd = [
+            "ffmpeg", "-y", "-framerate", str(FPS),
+            "-i", str(FRAMES / "f%05d.png"),
+            "-vf", "scale=1080:1920,format=yuv420p",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "22", "-r", str(FPS),
+            "-movflags", "+faststart", str(output_path),
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if r.returncode != 0:
+            print("ffmpeg error:", r.stderr[-1000:])
             raise RuntimeError("ffmpeg failed")
     return output_path
 
@@ -909,7 +985,7 @@ def _load_ai_topic():
 def generate(topic_id=None):
     with open(TOPICS) as f: data = json.load(f)
     topics = data["topics"]
-    handle = data.get("handle","@agentwave.ai")
+    handle = data.get("handle", "@agentwave.ai")
 
     ai_topic = None if topic_id else _load_ai_topic()
 
@@ -919,84 +995,107 @@ def generate(topic_id=None):
             set_custom_bg_prompt(topic["bg_prompt"])
         print(f"  Using AI-generated topic: {topic['title']}")
     elif topic_id:
-        topic = next((t for t in topics if t["id"]==int(topic_id)), topics[0])
+        topic = next((t for t in topics if t["id"] == int(topic_id)), topics[0])
     else:
         tracker = {}
         if TRACKER.exists():
             with open(TRACKER) as f: tracker = json.load(f)
-        used      = set(tracker.get("used",[]))
-        last_id   = tracker.get("last_id",0)
+        used      = set(tracker.get("used", []))
+        last_id   = tracker.get("last_id", 0)
         remaining = [t for t in topics if t["id"] not in used]
-        if not remaining: used=set(); remaining=topics
-        remaining.sort(key=lambda t:t["id"])
-        topic = next((t for t in remaining if t["id"]>last_id), remaining[0])
+        if not remaining: used = set(); remaining = topics
+        remaining.sort(key=lambda t: t["id"])
+        topic = next((t for t in remaining if t["id"] > last_id), remaining[0])
         used.add(topic["id"])
-        with open(TRACKER,"w") as f:
-            json.dump({"last_id":topic["id"],"used":list(used),
-                       "last_date":str(datetime.date.today())},f,indent=2)
+        with open(TRACKER, "w") as f:
+            json.dump({"last_id": topic["id"], "used": list(used),
+                       "last_date": str(datetime.date.today())}, f, indent=2)
 
-    theme_idx = topic["id"] % len(THEMES)
-    theme     = THEMES[theme_idx]
-    npts      = len(topic["points"])
+    theme_idx    = topic["id"] % len(THEMES)
+    theme        = THEMES[theme_idx]
+    npts         = len(topic["points"])
+    total_slides = 2 + npts + 1   # hook, title, N points, cta
 
     print(f"\n Animating Reel: #{topic['id']} — {topic['title']}")
 
     bg = prepare_background(topic["id"], theme_idx, theme)
 
-    # ── Generate voiceover FIRST so we can size the video to fit ──────────
-    print("  Generating voiceover...")
-    vo_path = Path("/tmp/reel_voiceover.mp3")
-    voiceover = generate_voiceover(topic, vo_path)
+    # ── Per-slide voiceover (generated first to drive timing) ─────────────
+    seg_dir = Path("/tmp/reel_segs")
+    seg_dir.mkdir(exist_ok=True)
+    segments = generate_segment_voiceovers(topic, seg_dir)
 
-    audio_dur = None
-    if voiceover and voiceover.exists():
-        audio_dur = get_audio_duration(voiceover)
-        if audio_dur:
-            print(f"  Voiceover duration: {audio_dur:.1f}s")
+    PAD = 0.4   # silence padding after each segment
+    if segments and len(segments) == total_slides:
+        hook_dur   = max(2.0, segments[0][1]           + PAD)
+        title_dur  = max(1.5, segments[1][1]           + PAD)
+        point_durs = [max(2.0, segments[2+i][1] + PAD) for i in range(npts)]
+        cta_dur    = max(2.5, segments[-1][1]          + PAD)
+        total_dur  = hook_dur + title_dur + sum(point_durs) + cta_dur
+        print(f"  Durations → hook:{hook_dur:.1f}s title:{title_dur:.1f}s "
+              f"pts:{[round(d,1) for d in point_durs]} cta:{cta_dur:.1f}s "
+              f"total:{total_dur:.1f}s")
+    else:
+        hook_dur, title_dur = 2.5, 2.0
+        point_durs = [3.0] * npts
+        cta_dur    = 3.5
 
-    # Default slide durations
-    hook_dur  = 4.0
-    title_dur = 2.5
-    point_dur = 4.0
-    cta_dur   = 5.0
-    base_total = hook_dur + title_dur + npts * point_dur + cta_dur
+    # ── Pre-build static card layers (reused every frame, built once) ──────
+    title_card = make_glass_card(W-60, int(H*0.55), theme, radius=44, tint_alpha=190)
+    point_card = make_gradient_card(W-60, H-620-120,  theme, radius=44)
+    cta_card   = make_neon_card(W-40,  int(H*0.75),  theme, radius=50)
 
-    # Extend CTA so the full voiceover fits — never cut the story short
-    if audio_dur and audio_dur > base_total:
-        extra = audio_dur - base_total + 1.5   # 1.5s silence buffer at end
-        cta_dur += extra
-        print(f"  Extended CTA by {extra:.1f}s → total video {base_total + extra:.1f}s")
-
+    # ── Render slides ──────────────────────────────────────────────────────
     all_frames = []
-    print("  Slide 1/7: Hook")
-    all_frames += render_slide(bg, lambda b,t: make_hook_frame(b,topic,theme,handle,t), hook_dur, fade_in=0.0)
-    print("  Slide 2/7: Title")
-    all_frames += render_slide(bg, lambda b,t: make_title_frame(b,topic,theme,handle,t), title_dur)
+
+    print(f"  Slide 1/{total_slides}: Hook ({hook_dur:.1f}s)")
+    all_frames += render_slide(
+        bg, lambda b, t: make_hook_frame(b, topic, theme, handle, t, 0, total_slides),
+        hook_dur, fade_in=0.0)
+
+    print(f"  Slide 2/{total_slides}: Title ({title_dur:.1f}s)")
+    all_frames += render_slide(
+        bg, lambda b, t: make_title_frame(b, topic, theme, handle, t, 1, total_slides, title_card),
+        title_dur)
+
     for i in range(npts):
-        print(f"  Slide {i+3}/7: Point {i+1}")
-        idx = i
-        all_frames += render_slide(bg, lambda b,t,ix=idx: make_point_frame(b,topic,theme,handle,ix,t,npts), point_dur)
-    print("  Slide 7/7: CTA")
-    all_frames += render_slide(bg, lambda b,t: make_cta_frame(b,topic,theme,handle,t), cta_dur)
+        print(f"  Slide {i+3}/{total_slides}: Point {i+1} ({point_durs[i]:.1f}s)")
+        ix = i; six = i + 2
+        all_frames += render_slide(
+            bg, lambda b, t, ix=ix, six=six: make_point_frame(
+                b, topic, theme, handle, ix, t, npts, six, total_slides, point_card),
+            point_durs[i])
+
+    print(f"  Slide {total_slides}/{total_slides}: CTA ({cta_dur:.1f}s)")
+    all_frames += render_slide(
+        bg, lambda b, t: make_cta_frame(b, topic, theme, handle, t, 2+npts, total_slides, cta_card),
+        cta_dur)
 
     print(f"  Total: {len(all_frames)} frames → {len(all_frames)/FPS:.1f}s")
 
-    date_str = datetime.date.today().strftime("%Y%m%d")
-    out_path = OUTDIR/f"reel_v2_{date_str}_topic{topic['id']}.mp4"
+    date_str  = datetime.date.today().strftime("%Y%m%d")
+    out_path  = OUTDIR / f"reel_v2_{date_str}_topic{topic['id']}.mp4"
+
+    # ── Concatenate per-slide segments into one audio file ─────────────────
+    vo_full   = Path("/tmp/reel_voiceover_full.mp3")
+    voiceover = concatenate_audio_segments(segments or [], vo_full)
 
     build_video(all_frames, out_path, voiceover_path=voiceover)
 
-    if topic.get("caption"):
-        caption = topic["caption"]
-    else:
-        caption = (f"{topic['title']}\n\n"
-                   + "\n".join(f"• {p}" for p in topic["points"])
-                   + f"\n\n{topic['cta']}\n\n{topic['hashtags']}")
-
-    meta = {"video_path":str(out_path),"caption":caption,
-            "topic_id":topic["id"],"topic_title":topic["title"],
-            "generated_at":datetime.datetime.now().isoformat()}
-    with open(OUTDIR/"latest_reel_meta.json","w") as f: json.dump(meta,f,indent=2)
+    caption = topic.get("caption") or (
+        f"{topic['title']}\n\n"
+        + "\n".join(f"• {p}" for p in topic["points"])
+        + f"\n\n{topic['cta']}\n\n{topic.get('hashtags','')}"
+    )
+    meta = {
+        "video_path":    str(out_path),
+        "caption":       caption,
+        "topic_id":      topic["id"],
+        "topic_title":   topic["title"],
+        "generated_at":  datetime.datetime.now().isoformat(),
+    }
+    with open(OUTDIR / "latest_reel_meta.json", "w") as f:
+        json.dump(meta, f, indent=2)
     print(f"\n Done! {out_path}")
     return str(out_path), meta
 

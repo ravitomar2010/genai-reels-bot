@@ -33,10 +33,17 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate AI content (trending topics + viral captions)
+      - name: Generate AI content (with fallback to static topics)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python3 scripts/ai_content_generator.py
+        run: |
+          python3 scripts/ai_content_generator.py \
+            && echo "AI_CONTENT=ok" >> "$GITHUB_ENV" \
+            || {
+              echo "WARNING: AI content generator failed — falling back to static topic rotation"
+              echo "AI_CONTENT=fallback" >> "$GITHUB_ENV"
+              rm -f generated/ai_topic.json
+            }
 
       - name: Verify fonts installed
         run: |
@@ -53,10 +60,14 @@ jobs:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
         run: python3 scripts/post_reel.py
 
+      - name: Confirm post (update tracker only on success)
+        run: python3 scripts/confirm_post.py
+
       - name: Save topic tracker (commit back)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scripts/topic_tracker.json
           git diff --staged --quiet || git commit -m "chore: advance topic tracker [skip ci]"
+          git pull --rebase origin main
           git push
