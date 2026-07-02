@@ -836,6 +836,20 @@ def generate_voiceover(topic, output_mp3):
 
 
 # ── Build video ────────────────────────────────────────────────────────────
+def get_audio_duration(mp3_path):
+    """Return duration in seconds using ffprobe, or None on failure."""
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(mp3_path)],
+            capture_output=True, text=True, timeout=10,
+        )
+        info = json.loads(r.stdout)
+        return float(info["format"]["duration"])
+    except Exception as e:
+        print(f"  Could not measure audio duration: {e}")
+        return None
+
+
 def build_video(all_frames, output_path, voiceover_path=None):
     for f in FRAMES.glob("*.png"):
         try: f.unlink()
@@ -856,11 +870,12 @@ def build_video(all_frames, output_path, voiceover_path=None):
             raise RuntimeError("ffmpeg failed (silent)")
 
         print("  Merging voiceover with video...")
+        # No -shortest: video is pre-extended to cover full audio duration
         cmd_merge = ["ffmpeg","-y",
                      "-i",str(silent_path),"-i",str(voiceover_path),
                      "-c:v","copy","-c:a","aac","-b:a","192k",
                      "-af","volume=4.0,aresample=44100","-ac","2",
-                     "-shortest","-movflags","+faststart",
+                     "-movflags","+faststart",
                      str(output_path)]
         r = subprocess.run(cmd_merge,capture_output=True,text=True,timeout=120)
         if r.returncode!=0:
@@ -928,26 +943,47 @@ def generate(topic_id=None):
 
     bg = prepare_background(topic["id"], theme_idx, theme)
 
+    # ── Generate voiceover FIRST so we can size the video to fit ──────────
+    print("  Generating voiceover...")
+    vo_path = Path("/tmp/reel_voiceover.mp3")
+    voiceover = generate_voiceover(topic, vo_path)
+
+    audio_dur = None
+    if voiceover and voiceover.exists():
+        audio_dur = get_audio_duration(voiceover)
+        if audio_dur:
+            print(f"  Voiceover duration: {audio_dur:.1f}s")
+
+    # Default slide durations
+    hook_dur  = 4.0
+    title_dur = 2.5
+    point_dur = 4.0
+    cta_dur   = 5.0
+    base_total = hook_dur + title_dur + npts * point_dur + cta_dur
+
+    # Extend CTA so the full voiceover fits — never cut the story short
+    if audio_dur and audio_dur > base_total:
+        extra = audio_dur - base_total + 1.5   # 1.5s silence buffer at end
+        cta_dur += extra
+        print(f"  Extended CTA by {extra:.1f}s → total video {base_total + extra:.1f}s")
+
     all_frames = []
     print("  Slide 1/7: Hook")
-    all_frames += render_slide(bg, lambda b,t: make_hook_frame(b,topic,theme,handle,t), 4.0, fade_in=0.0)
+    all_frames += render_slide(bg, lambda b,t: make_hook_frame(b,topic,theme,handle,t), hook_dur, fade_in=0.0)
     print("  Slide 2/7: Title")
-    all_frames += render_slide(bg, lambda b,t: make_title_frame(b,topic,theme,handle,t), 2.5)
+    all_frames += render_slide(bg, lambda b,t: make_title_frame(b,topic,theme,handle,t), title_dur)
     for i in range(npts):
         print(f"  Slide {i+3}/7: Point {i+1}")
         idx = i
-        all_frames += render_slide(bg, lambda b,t,ix=idx: make_point_frame(b,topic,theme,handle,ix,t,npts), 4.0)
+        all_frames += render_slide(bg, lambda b,t,ix=idx: make_point_frame(b,topic,theme,handle,ix,t,npts), point_dur)
     print("  Slide 7/7: CTA")
-    all_frames += render_slide(bg, lambda b,t: make_cta_frame(b,topic,theme,handle,t), 5.0)
+    all_frames += render_slide(bg, lambda b,t: make_cta_frame(b,topic,theme,handle,t), cta_dur)
 
     print(f"  Total: {len(all_frames)} frames → {len(all_frames)/FPS:.1f}s")
 
     date_str = datetime.date.today().strftime("%Y%m%d")
     out_path = OUTDIR/f"reel_v2_{date_str}_topic{topic['id']}.mp4"
 
-    print("  Generating voiceover...")
-    vo_path = Path("/tmp/reel_voiceover.mp3")
-    voiceover = generate_voiceover(topic, vo_path)
     build_video(all_frames, out_path, voiceover_path=voiceover)
 
     if topic.get("caption"):
