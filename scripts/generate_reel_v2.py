@@ -699,18 +699,17 @@ def make_point_frame(bg, topic, theme, handle, idx, t, total, slide_idx=2, total
     ca   = ease_out(min(1,max(0,(t-0.12)*4)))
     draw_text_shadow(draw, ((W-cw)//2,500), ctxt, cf, blend_c((0,0,0),theme["sub"],ca))
 
-    # Gradient card — slides up; reuse pre-built card when settled
-    ct   = ease_out(min(1, max(0, (t-0.1)*3)))
-    cy2  = int(620 + (1-ct)*200)
-    settled = ct >= 0.999
-    if static_card is not None and settled:
-        card   = static_card
-        card_h = H - 620 - 120
-        img    = paste_card(img, card, 30, 620)
+    # Gradient card — slides up; crop pre-built card to visible height each frame
+    ct     = ease_out(min(1, max(0, (t-0.1)*3)))
+    cy2    = int(620 + (1-ct)*200)
+    card_h = H - cy2 - 120   # visible height (grows as card slides up)
+    if static_card is not None:
+        # Cheap crop: no pixel redraw, just adjusts the bounding box
+        visible = static_card.crop((0, 0, static_card.size[0], min(card_h, static_card.size[1])))
+        img = paste_card(img, visible, 30, cy2)
     else:
-        card_h = H - cy2 - 120
-        card   = static_card if static_card is not None else make_gradient_card(W-60, card_h, theme, radius=44)
-        img    = paste_card(img, card, 30, cy2)
+        card = make_gradient_card(W-60, card_h, theme, radius=44)
+        img  = paste_card(img, card, 30, cy2)
     draw = ImageDraw.Draw(img)
 
     # Point text — big and bold
