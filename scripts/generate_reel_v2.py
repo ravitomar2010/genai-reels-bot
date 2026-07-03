@@ -866,27 +866,69 @@ def generate_segment_voiceovers(topic, seg_dir):
     return results
 
 
-def concatenate_audio_segments(segments, output_path):
-    """Concatenate (path, dur) segment list into a single MP3."""
-    valid = [(p, d) for p, d in (segments or []) if p and Path(p).exists()]
-    if not valid:
-        return None
-    if len(valid) == 1:
-        shutil.copy2(str(valid[0][0]), str(output_path))
-        return Path(output_path)
-    inputs = []
-    for p, _ in valid:
-        inputs += ["-i", str(p)]
-    n  = len(valid)
-    fc = "".join(f"[{i}:a]" for i in range(n)) + f"concat=n={n}:v=0:a=1[outa]"
-    cmd = ["ffmpeg", "-y"] + inputs + [
-        "-filter_complex", fc, "-map", "[outa]",
-        "-c:a", "libmp3lame", "-b:a", "192k", str(output_path),
+def concatenate_audio_segments(segments, slide_durs, output_path):
+    """
+    Pad each TTS segment to its exact slide duration, then concatenate.
+
+    segments  : list of (path_or_None, tts_dur_s) — one per slide
+    slide_durs: list of floats — final video duration for each slide
+    output_path: destination MP3
+
+    Each segment is padded with silence to whole_dur=slide_dur (via apad),
+    then trimmed to that same value so any overshoot is removed.
+    Missing segments (path=None) become pure silence via anullsrc.
+    """
+    assert len(segments) == len(slide_durs), (
+        f"segments len {len(segments)} != slide_durs len {len(slide_durs)}"
+    )
+
+    cmd          = ["ffmpeg", "-y"]
+    filter_parts = []
+    idx          = 0   # ffmpeg input index
+
+    for i, ((path, _), dur) in enumerate(zip(segments, slide_durs)):
+        d = f"{dur:.4f}"
+        if path and Path(path).exists():
+            cmd += ["-i", str(path)]
+            # apad fills silence up to whole_dur; atrim removes any rare overshoot
+            filter_parts.append(
+                f"[{idx}:a]apad=whole_dur={d},atrim=duration={d}[a{i}]"
+            )
+        else:
+            # Pure silence — lavfi anullsrc needs no real file
+            cmd += ["-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono"]
+            filter_parts.append(
+                f"[{idx}:a]atrim=duration={d}[a{i}]"
+            )
+        idx += 1
+
+    n          = len(segments)
+    concat_in  = "".join(f"[a{i}]" for i in range(n))
+    filter_parts.append(f"{concat_in}concat=n={n}:v=0:a=1[outa]")
+
+    cmd += [
+        "-filter_complex", ";".join(filter_parts),
+        "-map", "[outa]",
+        "-c:a", "libmp3lame", "-b:a", "192k",
+        str(output_path),
     ]
+
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
-        print("ffmpeg concat error:", r.stderr[-300:])
+        print("ffmpeg pad+concat error:", r.stderr[-500:])
         return None
+
+    # Sanity-check: total audio should equal total video (±0.1 s)
+    actual   = get_audio_duration(output_path)
+    expected = sum(slide_durs)
+    if actual is not None:
+        drift = actual - expected
+        if abs(drift) > 0.1:
+            print(f"  WARNING audio drift {drift:+.2f}s "
+                  f"(got {actual:.2f}s, expected {expected:.2f}s)")
+        else:
+            print(f"  Audio {actual:.2f}s == video {expected:.2f}s ✓")
+
     return Path(output_path)
 
 
@@ -1075,9 +1117,11 @@ def generate(topic_id=None):
     date_str  = datetime.date.today().strftime("%Y%m%d")
     out_path  = OUTDIR / f"reel_v2_{date_str}_topic{topic['id']}.mp4"
 
-    # ── Concatenate per-slide segments into one audio file ─────────────────
-    vo_full   = Path("/tmp/reel_voiceover_full.mp3")
-    voiceover = concatenate_audio_segments(segments or [], vo_full)
+    # ── Concatenate per-slide segments, each padded to its slide duration ──
+    vo_full    = Path("/tmp/reel_voiceover_full.mp3")
+    slide_durs = [hook_dur, title_dur] + point_durs + [cta_dur]
+    voiceover  = concatenate_audio_segments(segments or [], slide_durs, vo_full) \
+                 if segments else None
 
     build_video(all_frames, out_path, voiceover_path=voiceover)
 
