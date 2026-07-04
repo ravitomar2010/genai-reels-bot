@@ -554,6 +554,83 @@ def draw_energy_border(img, t, theme, thickness=3):
 
 # ── Slide renderers ────────────────────────────────────────────────────────
 
+def make_cover_frame(bg, topic, theme, handle, t):
+    """
+    Dedicated cover / in-feed thumbnail slide (1.5 s, silent).
+    Instagram uses the first video frame as the thumbnail; this ensures
+    viewers see the hook text immediately rather than a blank background.
+    All elements are fully visible from t=0 — no entrance animations.
+    """
+    # Boost brightness above the animated slides for maximum visual impact
+    cover_bg = ImageEnhance.Brightness(bg).enhance(1.3)   # ~71 % of original vs 55 %
+    cover_bg = ImageEnhance.Color(cover_bg).enhance(1.15)
+    img = apply_ken_burns(cover_bg, 0.5, zoom_in=True, strength=0.06)  # fixed mid-zoom
+
+    # Bottom-half gradient: improves text contrast without blacking out the top
+    grad = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd   = ImageDraw.Draw(grad)
+    for y in range(H // 3, H):
+        a = int(180 * ((y - H // 3) / (H * 2 / 3)) ** 1.8)
+        gd.line([(0, y), (W, y)], fill=(0, 0, 0, a))
+    img = Image.alpha_composite(img.convert("RGBA"), grad).convert("RGB")
+
+    # Accent glow behind the text area
+    img = draw_glow_overlay(img, W // 2, H // 2 - 40, 380, theme["glow"], 10)
+
+    # Particles + energy border for visual interest
+    img = draw_particles(img, theme, t, intensity=1.0)
+    img = draw_energy_border(img, t, theme, thickness=4)
+
+    draw = ImageDraw.Draw(img)
+
+    # ── Top pill ──────────────────────────────────────────────────────────
+    pf   = fnt(FONT_MED, 46)
+    ptxt = "GEN AI MASTER SERIES"
+    pw   = int(pf.getlength(ptxt))
+    rrect(draw, [(W-pw)//2-36, 108, (W+pw)//2+36, 108+70], 35, theme["accent"])
+    draw.text(((W-pw)//2, 122), ptxt, font=pf, fill=(255, 255, 255))
+
+    # ── Hook headline — fully visible, no animation ───────────────────────
+    hook_font = fnt(FONT_BOLD, 108)
+    lines  = wrap_text(topic["hook"], hook_font, W - 100)
+    bh     = text_block_h(lines, hook_font, 28)
+    base_y = H // 2 - bh // 2 - 60
+    lh     = line_height(hook_font, 28)
+    for i, line in enumerate(lines):
+        lw = int(hook_font.getlength(line))
+        draw_text_shadow(draw, ((W-lw)//2, base_y + i*lh),
+                         line, hook_font, (255, 255, 255), shadow_offset=6)
+
+    # ── Sub-tag line ──────────────────────────────────────────────────────
+    sf   = fnt(FONT_MED, 46)
+    stxt = "GenAI • Daily Education Reel"
+    sw   = int(sf.getlength(stxt))
+    draw_text_shadow(draw, ((W-sw)//2, base_y + bh + 28),
+                     stxt, sf, theme["sub"], shadow_offset=3)
+
+    # ── Shimmer accent line ───────────────────────────────────────────────
+    img = draw_shimmer_line(img, base_y + bh + 100, t, theme, width_pct=0.55)
+    draw = ImageDraw.Draw(img)
+
+    # ── Handle button ─────────────────────────────────────────────────────
+    pulse = math.sin(t * math.pi * 3) * 0.06 + 0.94
+    hf    = fnt(FONT_BOLD, 62)
+    hw    = int(hf.getlength(handle))
+    hbx   = (W - hw) // 2 - 38
+    img   = draw_glow_overlay(img, W//2, H-220, int(110*pulse), theme["accent"], 6)
+    draw  = ImageDraw.Draw(img)
+    rrect(draw, [hbx, H-274, hbx+hw+76, H-168], 34, theme["accent"])
+    draw.text(((W-hw)//2, H-270), handle, font=hf, fill=(255, 255, 255))
+
+    # ── "PLAY  TAP TO WATCH" nudge (ASCII-safe — Poppins has no ▶ glyph) ──
+    nf   = fnt(FONT_MED, 38)
+    ntxt = "PLAY  TAP TO WATCH"
+    nw   = int(nf.getlength(ntxt))
+    draw_text_shadow(draw, ((W-nw)//2, H-310), ntxt, nf, theme["bright"], shadow_offset=2)
+
+    return img
+
+
 def make_hook_frame(bg, topic, theme, handle, t, slide_idx=0, total_slides=7):
     img  = apply_ken_burns(bg, t, zoom_in=True, strength=0.12)
     pulse = math.sin(t*math.pi*2)*0.5+0.5
@@ -1055,27 +1132,31 @@ def generate(topic_id=None):
     theme_idx    = topic["id"] % len(THEMES)
     theme        = THEMES[theme_idx]
     npts         = len(topic["points"])
-    total_slides = 2 + npts + 1   # hook, title, N points, cta
+    COVER_DUR    = 1.5                      # silent cover / thumbnail slide
+    # total_slides: cover + hook + title + N points + cta
+    total_slides = 3 + npts + 1
 
     print(f"\n Animating Reel: #{topic['id']} — {topic['title']}")
 
     bg = prepare_background(topic["id"], theme_idx, theme)
 
     # ── Per-slide voiceover (generated first to drive timing) ─────────────
-    seg_dir = Path("/tmp/reel_segs")
+    # segments list covers hook..cta only (cover slide is silent)
+    seg_dir   = Path("/tmp/reel_segs")
     seg_dir.mkdir(exist_ok=True)
-    segments = generate_segment_voiceovers(topic, seg_dir)
+    segments  = generate_segment_voiceovers(topic, seg_dir)
+    n_content = 2 + npts + 1   # hook + title + points + cta
 
     PAD = 0.4   # silence padding after each segment
-    if segments and len(segments) == total_slides:
+    if segments and len(segments) == n_content:
         hook_dur   = max(2.0, segments[0][1]           + PAD)
         title_dur  = max(1.5, segments[1][1]           + PAD)
         point_durs = [max(2.0, segments[2+i][1] + PAD) for i in range(npts)]
         cta_dur    = max(2.5, segments[-1][1]          + PAD)
-        total_dur  = hook_dur + title_dur + sum(point_durs) + cta_dur
-        print(f"  Durations → hook:{hook_dur:.1f}s title:{title_dur:.1f}s "
-              f"pts:{[round(d,1) for d in point_durs]} cta:{cta_dur:.1f}s "
-              f"total:{total_dur:.1f}s")
+        total_dur  = COVER_DUR + hook_dur + title_dur + sum(point_durs) + cta_dur
+        print(f"  Durations → cover:{COVER_DUR:.1f}s hook:{hook_dur:.1f}s "
+              f"title:{title_dur:.1f}s pts:{[round(d,1) for d in point_durs]} "
+              f"cta:{cta_dur:.1f}s total:{total_dur:.1f}s")
     else:
         hook_dur, title_dur = 2.5, 2.0
         point_durs = [3.0] * npts
@@ -1087,21 +1168,27 @@ def generate(topic_id=None):
     cta_card   = make_neon_card(W-40,  int(H*0.75),  theme, radius=50)
 
     # ── Render slides ──────────────────────────────────────────────────────
+    # Slide indices: 0=cover 1=hook 2=title 3..=points last=cta
     all_frames = []
 
-    print(f"  Slide 1/{total_slides}: Hook ({hook_dur:.1f}s)")
+    print(f"  Slide 1/{total_slides}: Cover ({COVER_DUR:.1f}s) [thumbnail]")
     all_frames += render_slide(
-        bg, lambda b, t: make_hook_frame(b, topic, theme, handle, t, 0, total_slides),
+        bg, lambda b, t: make_cover_frame(b, topic, theme, handle, t),
+        COVER_DUR, fade_in=0.0, fade_out=0.0)
+
+    print(f"  Slide 2/{total_slides}: Hook ({hook_dur:.1f}s)")
+    all_frames += render_slide(
+        bg, lambda b, t: make_hook_frame(b, topic, theme, handle, t, 1, total_slides),
         hook_dur, fade_in=0.0)
 
-    print(f"  Slide 2/{total_slides}: Title ({title_dur:.1f}s)")
+    print(f"  Slide 3/{total_slides}: Title ({title_dur:.1f}s)")
     all_frames += render_slide(
-        bg, lambda b, t: make_title_frame(b, topic, theme, handle, t, 1, total_slides, title_card),
+        bg, lambda b, t: make_title_frame(b, topic, theme, handle, t, 2, total_slides, title_card),
         title_dur)
 
     for i in range(npts):
-        print(f"  Slide {i+3}/{total_slides}: Point {i+1} ({point_durs[i]:.1f}s)")
-        ix = i; six = i + 2
+        print(f"  Slide {i+4}/{total_slides}: Point {i+1} ({point_durs[i]:.1f}s)")
+        ix = i; six = i + 3
         all_frames += render_slide(
             bg, lambda b, t, ix=ix, six=six: make_point_frame(
                 b, topic, theme, handle, ix, t, npts, six, total_slides, point_card),
@@ -1109,7 +1196,7 @@ def generate(topic_id=None):
 
     print(f"  Slide {total_slides}/{total_slides}: CTA ({cta_dur:.1f}s)")
     all_frames += render_slide(
-        bg, lambda b, t: make_cta_frame(b, topic, theme, handle, t, 2+npts, total_slides, cta_card),
+        bg, lambda b, t: make_cta_frame(b, topic, theme, handle, t, 3+npts, total_slides, cta_card),
         cta_dur)
 
     print(f"  Total: {len(all_frames)} frames → {len(all_frames)/FPS:.1f}s")
@@ -1118,9 +1205,12 @@ def generate(topic_id=None):
     out_path  = OUTDIR / f"reel_v2_{date_str}_topic{topic['id']}.mp4"
 
     # ── Concatenate per-slide segments, each padded to its slide duration ──
+    # Prepend a silence slot for the cover; rest follows hook..cta order
+    cover_seg  = (None, COVER_DUR)
+    all_segs   = [cover_seg] + (segments or [])
+    slide_durs = [COVER_DUR, hook_dur, title_dur] + point_durs + [cta_dur]
     vo_full    = Path("/tmp/reel_voiceover_full.mp3")
-    slide_durs = [hook_dur, title_dur] + point_durs + [cta_dur]
-    voiceover  = concatenate_audio_segments(segments or [], slide_durs, vo_full) \
+    voiceover  = concatenate_audio_segments(all_segs, slide_durs, vo_full) \
                  if segments else None
 
     build_video(all_frames, out_path, voiceover_path=voiceover)
