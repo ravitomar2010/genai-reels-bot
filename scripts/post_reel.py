@@ -94,6 +94,7 @@ def post_to_instagram(media_url: str, caption: str, account_id: str) -> str:
                 "platformSpecificData": {
                     "contentType": "reels",
                     "shareToFeed": True,
+                    "isAiGenerated": True,   # requests the Instagram "AI Generated" label
                 },
             }],
             "publishNow": True,
