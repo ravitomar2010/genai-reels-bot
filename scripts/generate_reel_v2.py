@@ -636,13 +636,13 @@ def make_hook_frame(bg, topic, theme, handle, t, slide_idx=0, total_slides=7):
     pulse = math.sin(t*math.pi*2)*0.5+0.5
     img  = draw_glow_overlay(img, W//2, int(H*0.28+pulse*15), 350, theme["glow"], 10)
 
-    # Subtle tinted overlay — not pure black
+    # Tinted overlay — alpha 150 so white text pops on bright AI backgrounds
     accent = theme["accent"]
-    bg = theme["bg"]
-    ov_r = min(20, bg[0] + accent[0] // 10)
-    ov_g = min(20, bg[1] + accent[1] // 10)
-    ov_b = min(20, bg[2] + accent[2] // 10)
-    ov = Image.new("RGBA",(W,H),(ov_r, ov_g, ov_b, 110))
+    bg_col = theme["bg"]
+    ov_r = min(20, bg_col[0] + accent[0] // 10)
+    ov_g = min(20, bg_col[1] + accent[1] // 10)
+    ov_b = min(20, bg_col[2] + accent[2] // 10)
+    ov = Image.new("RGBA", (W, H), (ov_r, ov_g, ov_b, 150))
     img = Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
 
     # Floating particles
@@ -657,47 +657,50 @@ def make_hook_frame(bg, topic, theme, handle, t, slide_idx=0, total_slides=7):
 
     draw = ImageDraw.Draw(img)
 
-    # Series pill — slides down
-    pill_y = int(-80 + ease_out(min(1,t*3))*220)
+    # Series pill — starts 30 px above final so it's on-screen at t=0
+    # final y=140; slides from 110→140 quickly
+    pill_y = int(110 + ease_out(min(1, t * 4)) * 30)
     pf     = fnt(FONT_MED, 44)
     ptxt   = "GEN AI MASTER SERIES"
     pw     = int(pf.getlength(ptxt))
-    rrect(draw,[(W-pw)//2-32,pill_y,(W+pw)//2+32,pill_y+66],33,theme["accent"])
-    draw.text(((W-pw)//2,pill_y+12),ptxt,font=pf,fill=(255,255,255))
+    rrect(draw, [(W-pw)//2-32, pill_y, (W+pw)//2+32, pill_y+66], 33, theme["accent"])
+    draw.text(((W-pw)//2, pill_y+12), ptxt, font=pf, fill=(255, 255, 255))
 
-    # Hook text — slam effect (zooms in and shakes)
+    # Hook text — scale-pop: 100 % opacity from t=0, scales 94 %→100 % over 0.25 s
+    # Per-line stagger 0.04 s so all lines are visible by frame 2 (~0.07 s).
     hook_font = fnt(FONT_BOLD, 110)
-    lines = wrap_text(topic["hook"], hook_font, W-100)
-    bh    = text_block_h(lines, hook_font, 28)
-    base_y = H//2 - bh//2
+    lines  = wrap_text(topic["hook"], hook_font, W-100)
+    bh     = text_block_h(lines, hook_font, 28)
+    base_y = H // 2 - bh // 2
 
-    slam_t = max(0, (t - 0.08))
     for i, line in enumerate(lines):
-        line_t = max(0, slam_t - i * 0.12)
-        if line_t <= 0:
-            continue
-        lw = int(hook_font.getlength(line))
-        lx = (W - lw) // 2
-        ly = base_y + i * line_height(hook_font, 28)
-        if line_t < 0.15:
-            p = ease_out(line_t / 0.15)
-            ly = ly - int(60 * (1 - p))
-        elif line_t < 0.25:
-            shake = int(3 * math.sin((line_t - 0.15) / 0.10 * math.pi * 8) * (1 - (line_t - 0.15) / 0.10))
-            lx += shake
-        draw_text_shadow(draw, (lx, ly), line, hook_font, (255,255,255), shadow_offset=5)
+        line_t  = max(0.0, t - i * 0.04)              # 0.04 s stagger, starts at t=0
+        scale_p = ease_out(min(1.0, line_t / 0.25))   # 0→1 over first 0.25 s
+        fs      = max(104, int(110 * (0.94 + 0.06 * scale_p)))  # 103→110 pt
+        lf      = fnt(FONT_BOLD, fs)
+        lw      = int(lf.getlength(line))
+        lx      = (W - lw) // 2
+        ly      = base_y + i * line_height(hook_font, 28)   # layout uses base size
 
-    # Pulse ring on text reveal
+        if 0.25 <= line_t < 0.35:   # shake after scale settles
+            shake = int(3 * math.sin((line_t - 0.25) / 0.10 * math.pi * 8)
+                        * (1 - (line_t - 0.25) / 0.10))
+            lx += shake
+
+        draw_text_shadow(draw, (lx, ly), line, lf, (255, 255, 255), shadow_offset=5)
+
+    # Pulse ring after text is fully in
     ring_t = max(0, (t - 0.20)) * 2.5
     if ring_t > 0:
         img = draw_pulse_ring(img, W // 2, H // 2, min(1, ring_t), theme["accent"], max_r=300)
         draw = ImageDraw.Draw(img)
 
     # Progress bar
-    rrect(draw,[40,H-58,W-40,H-50],4,(30,30,50))
-    rrect(draw,[40,H-58,40+int((W-80)*(slide_idx+1)/total_slides),H-50],4,theme["accent"])
+    rrect(draw, [40, H-58, W-40, H-50], 4, (30, 30, 50))
+    rrect(draw, [40, H-58, 40+int((W-80)*(slide_idx+1)/total_slides), H-50], 4, theme["accent"])
 
-    img = draw_follow_badge(img, handle, theme, t)
+    # Follow badge — pass t+0.64 so (t-0.3)*3 >= 1.0 at t=0 → fully visible immediately
+    img = draw_follow_badge(img, handle, theme, t + 0.64)
     return img
 
 
