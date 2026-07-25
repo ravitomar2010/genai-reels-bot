@@ -8,7 +8,7 @@ YouTube's 3-minute Shorts threshold) — no separate render needed.
 import json
 from pathlib import Path
 
-from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, create_post
+from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, upload_image, create_post
 
 
 def find_latest_meta():
@@ -20,7 +20,7 @@ def find_latest_meta():
         return json.load(f)
 
 
-def post_to_youtube(media_url: str, meta: dict, account_id: str) -> str:
+def post_to_youtube(media_url: str, meta: dict, account_id: str, thumbnail_url: str = None) -> str:
     log("Posting to YouTube (Shorts)...")
 
     title       = (meta.get("youtube_title") or meta["topic_title"])[:100]
@@ -32,20 +32,29 @@ def post_to_youtube(media_url: str, meta: dict, account_id: str) -> str:
     if hashtags and hashtags not in content:
         content += f"\n\n{hashtags}"
 
+    media_item = {"url": media_url, "type": "video"}
+    if thumbnail_url:
+        media_item["thumbnail"] = thumbnail_url
+
+    platform_data = {
+        "title": title,
+        "visibility": "public",
+        "madeForKids": False,
+        "categoryId": "28",              # Science & Technology
+        "containsSyntheticMedia": True,   # AI-generated voice + visuals — disclose per YouTube policy
+        "tags": tags,
+    }
+    first_comment = meta.get("engagement_comment")
+    if first_comment:
+        platform_data["firstComment"] = first_comment
+
     body = {
         "content": content[:5000],
-        "mediaItems": [{"url": media_url, "type": "video"}],
+        "mediaItems": [media_item],
         "platforms": [{
             "platform": "youtube",
             "accountId": account_id,
-            "platformSpecificData": {
-                "title": title,
-                "visibility": "public",
-                "madeForKids": False,
-                "categoryId": "28",              # Science & Technology
-                "containsSyntheticMedia": True,   # AI-generated voice + visuals — disclose per YouTube policy
-                "tags": tags,
-            },
+            "platformSpecificData": platform_data,
         }],
         "publishNow": True,
     }
@@ -70,7 +79,16 @@ def main():
     log(f"Topic: {meta['topic_title']} (#{meta['topic_id']})")
     account_id = get_account_id("youtube")
     media_url  = upload_video(video_path)
-    post_id    = post_to_youtube(media_url, meta, account_id)
+
+    thumbnail_url = None
+    thumb_path = Path(meta["thumbnail_path"]) if meta.get("thumbnail_path") else None
+    if thumb_path and thumb_path.exists():
+        try:
+            thumbnail_url = upload_image(thumb_path)
+        except Exception as e:
+            log(f"  Thumbnail upload failed, continuing without it: {e}")
+
+    post_id = post_to_youtube(media_url, meta, account_id, thumbnail_url)
     log(f"\nPosted to YouTube Shorts | Post ID: {post_id}")
     log(f"   Topic: {meta['topic_title']}")
 

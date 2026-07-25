@@ -1,5 +1,6 @@
 generated/*.mp4
 generated/*.json
+generated/*.jpg
 bg_cache/*.jpg
 bg_cache/*.png
 __pycache__/

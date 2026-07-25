@@ -590,9 +590,14 @@ def make_cover_frame(bg, topic, theme, handle, t):
     rrect(draw, [(W-pw)//2-36, 108, (W+pw)//2+36, 108+70], 35, theme["accent"])
     draw.text(((W-pw)//2, 122), ptxt, font=pf, fill=(255, 255, 255))
 
-    # ── Hook headline — fully visible, no animation ───────────────────────
+    # ── Headline — fully visible, no animation ─────────────────────────────
+    # Prefer the short punchy thumbnail_text (3-5 words); fall back to the
+    # short topic_title (still a handful of words) rather than the full
+    # narration hook (up to 15 words) — this frame doubles as the IG/YouTube
+    # Shorts thumbnail, where a long sentence reads as a wall of text.
+    headline  = topic.get("thumbnail_text") or topic["title"]
     hook_font = fnt(FONT_BOLD, 108)
-    lines  = wrap_text(topic["hook"], hook_font, W - 100)
+    lines  = wrap_text(headline, hook_font, W - 100)
     bh     = text_block_h(lines, hook_font, 28)
     base_y = H // 2 - bh // 2 - 60
     lh     = line_height(hook_font, 28)
@@ -1207,6 +1212,12 @@ def generate(topic_id=None):
     date_str  = datetime.date.today().strftime("%Y%m%d")
     out_path  = OUTDIR / f"reel_v2_{date_str}_topic{topic['id']}.mp4"
 
+    # Cover frame is fully composed at t=0 — export it standalone so it can
+    # also be uploaded as a custom YouTube thumbnail (Shorts only honor this
+    # on desktop; the same frame is always frame 0 of the video regardless).
+    thumb_path = OUTDIR / f"thumbnail_topic{topic['id']}.jpg"
+    all_frames[0].convert("RGB").save(str(thumb_path), quality=95)
+
     # ── Concatenate per-slide segments, each padded to its slide duration ──
     # Prepend a silence slot for the cover; rest follows hook..cta order
     cover_seg  = (None, COVER_DUR)
@@ -1225,6 +1236,7 @@ def generate(topic_id=None):
     )
     meta = {
         "video_path":    str(out_path),
+        "thumbnail_path": str(thumb_path),
         "caption":       caption,
         "topic_id":      topic["id"],
         "topic_title":   topic["title"],
@@ -1233,6 +1245,7 @@ def generate(topic_id=None):
         "youtube_description": topic.get("youtube_description", caption),
         "youtube_tags":        topic.get("youtube_tags", []),
         "youtube_hashtags":    topic.get("youtube_hashtags", topic.get("hashtags", "")),
+        "engagement_comment":  topic.get("engagement_comment", ""),
     }
     with open(OUTDIR / "latest_reel_meta.json", "w") as f:
         json.dump(meta, f, indent=2)

@@ -115,7 +115,7 @@ Output ONLY this JSON (no markdown fences, no explanation):
   "topic_title": "Short punchy title (max 8 words)",
   "hook": "One bold claim or surprising fact — no emoji, max 15 words",
   "points": ["Concise point 1 (max 10 words)", "Point 2", "Point 3", "Point 4"],
-  "cta": "Engaging call to action (max 12 words)",
+  "cta": "Engaging call to action (max 12 words) — platform-neutral, works whether the viewer is on Instagram or YouTube",
   "caption_variants": [
     {{
       "caption": "Educational angle: teaches something concrete, opens with a clear insight, 3–5 punchy lines, no fluff",
@@ -135,10 +135,12 @@ Output ONLY this JSON (no markdown fences, no explanation):
   "has_strong_headline": true,
   "trend_source": "Which headline or trend inspired this topic",
   "bg_prompt": "Pollinations.ai image prompt for an engaging background",
+  "thumbnail_text": "3-5 word punchy thumbnail overlay (Title Case, no punctuation) — must be readable at a glance, distinct from the full hook",
   "youtube_title": "SEO-friendly YouTube Shorts title, max 100 chars, front-load the keyword/hook",
   "youtube_description": "2-4 sentence keyword-rich description expanding on the hook and points, written for YouTube search (not identical to the IG caption)",
   "youtube_tags": ["10-15 short keyword tags, no # symbol, e.g. artificial intelligence, ai tools, machine learning"],
-  "youtube_hashtags": "#Tag1 #Tag2 #Tag3 (exactly 3 — YouTube only displays the first 3 above the title)"
+  "youtube_hashtags": "#Tag1 #Tag2 #Tag3 (exactly 3 — YouTube only displays the first 3 above the title)",
+  "engagement_comment": "A short question or reply-bait line (max 15 words) to auto-post as the pinned first comment on both platforms — invites replies, not a repeat of the caption"
 }}
 
 ## Content guardrails
@@ -149,6 +151,9 @@ Output ONLY this JSON (no markdown fences, no explanation):
 - If referencing today's headline, quote it accurately — do not embellish
 - bg_prompt: dark moody abstract (80%+ dark), 1–2 accent glow colors, NO literal objects (no laptops, people, screens). Must not compete with text overlay.
 - EXACTLY 5 hashtags per variant — pick from evergreen list or propose 2 niche tags relevant to the topic: {hashtag_block}
+- thumbnail_text is shown huge on the video's cover frame (doubles as the Instagram/YouTube Shorts thumbnail) — keep it to 3-5 words, no emoji, no punctuation, higher-impact than the full hook
+- cta is rendered as pixels in the one shared video file posted to BOTH platforms — never say "Follow" or "Subscribe" explicitly (wrong verb on the other platform); prefer phrasing like "more daily on @agentwave.ai", "save this for later", "turn on notifications so you don't miss the next one"
+- engagement_comment must invite a reply (a question, a "which one are you trying first" prompt, a poll-style either/or) — this is what drives comment-reply engagement, not another summary of the topic
 - youtube_title must be a DIFFERENT phrasing than topic_title — optimize for YouTube search intent (what someone would type), not just a repeat
 - youtube_tags must be plain keyword phrases (no # symbol), ordered broad-to-specific
 - Year references must use {year}, never a hardcoded past year
@@ -208,10 +213,12 @@ def main():
         "cta":           content["cta"],
         "caption":       preferred["caption"] + "\n\n" + preferred["hashtags"],
         "bg_prompt":     content.get("bg_prompt", ""),
+        "thumbnail_text": content.get("thumbnail_text", content["hook"]),
         "youtube_title":       content.get("youtube_title", content["topic_title"])[:100],
         "youtube_description": content.get("youtube_description", content["hook"]),
         "youtube_tags":        content.get("youtube_tags", []),
         "youtube_hashtags":    content.get("youtube_hashtags", preferred["hashtags"]),
+        "engagement_comment":  content.get("engagement_comment", ""),
         "ai_generated":  True,
         "trend_source":  content.get("trend_source", ""),
         "generated_date": str(datetime.date.today()),

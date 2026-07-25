@@ -77,6 +77,40 @@ def upload_video(video_path) -> str:
     return public_url
 
 
+def upload_image(image_path) -> str:
+    """Upload a JPG/PNG via Zernio presigned URL flow. Returns the public URL."""
+    from pathlib import Path
+    image_path = Path(image_path)
+    content_type = "image/png" if image_path.suffix.lower() == ".png" else "image/jpeg"
+
+    def _get_presigned():
+        log("Getting presigned image upload URL...")
+        r = requests.post(f"{ZERNIO_BASE}/media/presign",
+                          headers=HEADERS,
+                          json={"filename": image_path.name, "contentType": content_type},
+                          timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    data = _retry(_get_presigned, "Get presigned image URL")
+    upload_url = data.get("uploadUrl")
+    public_url = data.get("publicUrl")
+    log(f"Uploading {image_path.name} ({image_path.stat().st_size // 1024} KB)...")
+
+    def _upload_file():
+        with open(image_path, "rb") as f:
+            up = requests.put(upload_url,
+                              data=f.read(),
+                              headers={"Content-Type": content_type},
+                              timeout=60)
+        log(f"  Upload HTTP {up.status_code}")
+        up.raise_for_status()
+
+    _retry(_upload_file, "Upload image")
+    log(f"Image upload complete: {public_url}")
+    return public_url
+
+
 def create_post(body: dict) -> str:
     def _post():
         r = requests.post(f"{ZERNIO_BASE}/posts", headers=HEADERS, json=body, timeout=60)

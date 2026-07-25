@@ -7,7 +7,7 @@ Runs fully automated — no human steps needed.
 import json
 from pathlib import Path
 
-from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, create_post
+from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, upload_image, create_post
 
 
 def find_latest_meta():
@@ -20,19 +20,26 @@ def find_latest_meta():
         return json.load(f)
 
 
-def post_to_instagram(media_url: str, caption: str, account_id: str) -> str:
+def post_to_instagram(media_url: str, caption: str, account_id: str,
+                       thumbnail_url: str = None, first_comment: str = None) -> str:
     log("Posting to Instagram...")
+    platform_data = {
+        "contentType": "reels",
+        "shareToFeed": True,
+        "isAiGenerated": True,   # requests the Instagram "AI Generated" label
+    }
+    if thumbnail_url:
+        platform_data["instagramThumbnail"] = thumbnail_url
+    if first_comment:
+        platform_data["firstComment"] = first_comment
+
     body = {
         "content": caption,
         "mediaItems": [{"url": media_url, "type": "video"}],
         "platforms": [{
             "platform": "instagram",
             "accountId": account_id,
-            "platformSpecificData": {
-                "contentType": "reels",
-                "shareToFeed": True,
-                "isAiGenerated": True,   # requests the Instagram "AI Generated" label
-            },
+            "platformSpecificData": platform_data,
         }],
         "publishNow": True,
     }
@@ -57,7 +64,17 @@ def main():
     log(f"Topic: {meta['topic_title']} (#{meta['topic_id']})")
     account_id = get_account_id("instagram")
     media_url  = upload_video(video_path)
-    post_id    = post_to_instagram(media_url, meta["caption"], account_id)
+
+    thumbnail_url = None
+    thumb_path = Path(meta["thumbnail_path"]) if meta.get("thumbnail_path") else None
+    if thumb_path and thumb_path.exists():
+        try:
+            thumbnail_url = upload_image(thumb_path)
+        except Exception as e:
+            log(f"  Thumbnail upload failed, continuing without it: {e}")
+
+    post_id = post_to_instagram(media_url, meta["caption"], account_id,
+                                 thumbnail_url, meta.get("engagement_comment"))
     log(f"\nPosted to @agentwave.ai | Post ID: {post_id}")
     log(f"   Topic: {meta['topic_title']}")
 
