@@ -56,7 +56,8 @@ def fetch_trending_topics():
     """Fetch trending AI headlines from Google News RSS."""
     queries = [
         "generative AI trending",
-        "AI tools new",
+        "new AI tools launched",
+        "AI technology breakthrough",
         "LLM AI agents",
         "artificial intelligence viral",
     ]
@@ -133,7 +134,11 @@ Output ONLY this JSON (no markdown fences, no explanation):
   ],
   "has_strong_headline": true,
   "trend_source": "Which headline or trend inspired this topic",
-  "bg_prompt": "Pollinations.ai image prompt for an engaging background"
+  "bg_prompt": "Pollinations.ai image prompt for an engaging background",
+  "youtube_title": "SEO-friendly YouTube Shorts title, max 100 chars, front-load the keyword/hook",
+  "youtube_description": "2-4 sentence keyword-rich description expanding on the hook and points, written for YouTube search (not identical to the IG caption)",
+  "youtube_tags": ["10-15 short keyword tags, no # symbol, e.g. artificial intelligence, ai tools, machine learning"],
+  "youtube_hashtags": "#Tag1 #Tag2 #Tag3 (exactly 3 — YouTube only displays the first 3 above the title)"
 }}
 
 ## Content guardrails
@@ -144,6 +149,8 @@ Output ONLY this JSON (no markdown fences, no explanation):
 - If referencing today's headline, quote it accurately — do not embellish
 - bg_prompt: dark moody abstract (80%+ dark), 1–2 accent glow colors, NO literal objects (no laptops, people, screens). Must not compete with text overlay.
 - EXACTLY 5 hashtags per variant — pick from evergreen list or propose 2 niche tags relevant to the topic: {hashtag_block}
+- youtube_title must be a DIFFERENT phrasing than topic_title — optimize for YouTube search intent (what someone would type), not just a repeat
+- youtube_tags must be plain keyword phrases (no # symbol), ordered broad-to-specific
 - Year references must use {year}, never a hardcoded past year
 - Output raw JSON only"""
 
@@ -201,6 +208,10 @@ def main():
         "cta":           content["cta"],
         "caption":       preferred["caption"] + "\n\n" + preferred["hashtags"],
         "bg_prompt":     content.get("bg_prompt", ""),
+        "youtube_title":       content.get("youtube_title", content["topic_title"])[:100],
+        "youtube_description": content.get("youtube_description", content["hook"]),
+        "youtube_tags":        content.get("youtube_tags", []),
+        "youtube_hashtags":    content.get("youtube_hashtags", preferred["hashtags"]),
         "ai_generated":  True,
         "trend_source":  content.get("trend_source", ""),
         "generated_date": str(datetime.date.today()),

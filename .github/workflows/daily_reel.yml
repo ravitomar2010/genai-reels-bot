@@ -1,4 +1,4 @@
-name: Daily Instagram Reel
+name: Daily Instagram Reel + YouTube Short
 
 on:
   schedule:
@@ -59,6 +59,12 @@ jobs:
         env:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
         run: python3 scripts/post_reel.py
+
+      - name: Post to YouTube Shorts via Zernio
+        continue-on-error: true   # don't block Instagram's tracker confirm if YouTube isn't connected yet / fails
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+        run: python3 scripts/post_youtube.py
 
       - name: Confirm post (update tracker only on success)
         run: python3 scripts/confirm_post.py

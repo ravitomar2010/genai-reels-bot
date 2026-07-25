@@ -1229,6 +1229,10 @@ def generate(topic_id=None):
         "topic_id":      topic["id"],
         "topic_title":   topic["title"],
         "generated_at":  datetime.datetime.now().isoformat(),
+        "youtube_title":       topic.get("youtube_title", topic["title"])[:100],
+        "youtube_description": topic.get("youtube_description", caption),
+        "youtube_tags":        topic.get("youtube_tags", []),
+        "youtube_hashtags":    topic.get("youtube_hashtags", topic.get("hashtags", "")),
     }
     with open(OUTDIR / "latest_reel_meta.json", "w") as f:
         json.dump(meta, f, indent=2)

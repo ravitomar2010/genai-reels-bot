@@ -1,20 +1,24 @@
-# Gen AI Master — Daily Instagram Reels Bot
+# Gen AI Master — Daily Instagram Reel + YouTube Short Bot
 
-Automatically generates and posts a daily Gen AI tutorial Reel to [@agentwave.ai](https://instagram.com/agentwave.ai) using GitHub Actions + Zernio.
+Automatically generates and posts a daily Gen AI / new-AI-tools video to [@agentwave.ai](https://instagram.com/agentwave.ai) on Instagram Reels **and** YouTube Shorts, using GitHub Actions + Zernio.
 
 ## How it works
 
 1. **GitHub Actions** triggers at 10 AM IST (04:30 UTC) every day
-2. `ai_content_generator.py` fetches trending headlines via Google News RSS and calls Claude to generate a topic + 2 caption variants (educational and news-reaction). If this step fails, the run falls back to the static `topics_genai.json` rotation automatically.
-3. `generate_reel_v2.py` creates a 30 FPS 1080×1920 MP4 Reel:
+2. `ai_content_generator.py` fetches trending AI headlines via Google News RSS (including new AI tool launches) and calls Claude to generate one topic with: 2 Instagram caption variants (educational and news-reaction), plus a YouTube-optimized title, description, keyword tags, and hashtags. If this step fails, the run falls back to the static `topics_genai.json` rotation automatically.
+3. `generate_reel_v2.py` creates a single 30 FPS 1080×1920 MP4 (works as both an Instagram Reel and a YouTube Short — same vertical format, well under YouTube's 3-minute Shorts limit):
    - Per-slide edge-tts voiceover generated first; each slide's duration = its narration + 0.4 s padding so narration stays perfectly in sync
    - AI background from Pollinations.ai (free, no key needed)
    - VFX: Ken Burns, floating particles, light sweep, pulse rings, energy border, text slam
    - Glassmorphism / gradient / neon translucent cards with AI background showing through
-   - Loudnorm audio (-14 LUFS, Instagram standard); optional background music from `assets/music/`
+   - Loudnorm audio (-14 LUFS); optional background music from `assets/music/`
 4. `post_reel.py` uploads the MP4 to Zernio (presigned URL flow) and publishes to Instagram as a Reel
-5. `confirm_post.py` appends the used title to `topic_tracker.json` **only after a successful post** so a failed run never marks a topic as consumed
-6. `topic_tracker.json` is committed back so topics rotate without repeats
+5. `post_youtube.py` uploads the same MP4 to Zernio and publishes it as a YouTube Short (title/description/tags/hashtags from step 2). Runs with `continue-on-error` in the workflow so a YouTube hiccup never blocks the Instagram post or the tracker.
+6. `confirm_post.py` appends the used title to `topic_tracker.json` **only after a successful post** so a failed run never marks a topic as consumed
+7. `topic_tracker.json` is committed back so topics rotate without repeats
+
+### YouTube setup
+Connect your YouTube channel in the [Zernio dashboard](https://zernio.com/dashboard) the same way you connected Instagram — no extra API key needed, `ZERNIO_API_KEY` covers all platforms. Until a YouTube account is connected, the `post_youtube.py` step will fail (harmlessly, thanks to `continue-on-error`) and only Instagram will get posted.
 
 ## Setup
 
@@ -35,9 +39,11 @@ The workflow runs daily at 04:30 UTC (10:00 AM IST). Trigger manually from the *
 
 | File | Purpose |
 |------|---------|
-| `scripts/generate_reel_v2.py` | Generates 30 FPS animated Reel with per-slide audio sync |
-| `scripts/ai_content_generator.py` | Claude-powered daily topic + caption generator |
+| `scripts/generate_reel_v2.py` | Generates 30 FPS animated Reel/Short with per-slide audio sync |
+| `scripts/ai_content_generator.py` | Claude-powered daily topic + IG captions + YouTube title/description/tags generator |
+| `scripts/zernio_client.py` | Shared Zernio API helpers (upload, account lookup, post creation) |
 | `scripts/post_reel.py` | Uploads to Zernio + posts to Instagram |
+| `scripts/post_youtube.py` | Uploads to Zernio + posts to YouTube Shorts |
 | `scripts/confirm_post.py` | Writes tracker entry after successful post |
 | `scripts/topics_genai.json` | 30 static Gen AI tutorial topics (fallback) |
 | `scripts/topic_tracker.json` | Tracks used topics |
