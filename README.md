@@ -37,6 +37,11 @@ The static topic rotation (`topics_genai.json`) is still English-only, so a Clau
 - **Platform-neutral in-video CTA** — the CTA card is baked into the one video file shared by both platforms, so the prompt guardrails now forbid platform-specific verbs ("Follow" / "Subscribe") that would read wrong on the other platform.
 - **Custom, explicit thumbnails** on both platforms (see above) instead of relying on each platform's own auto-selected frame.
 
+### Performance feedback loop
+`post_reel.py` / `post_youtube.py` record each posted topic's platform post IDs into `scripts/post_history.json` (topic, hook, `instagram_post_id`/`youtube_post_id`). Each day, before generating new content, `fetch_analytics.py` pulls recent post metrics from Zernio's `/v1/analytics` endpoint and merges views/likes/comments/shares into that same file, matched back to topics via the stored post IDs. `ai_content_generator.py` then loads the top and bottom performing recent topics/hooks and includes them in Claude's prompt as real signal — so topic selection isn't flying blind, it's steered by what's actually getting views.
+
+Runs with `continue-on-error` since Zernio's exact analytics response schema isn't fully documented — `fetch_analytics.py` extracts fields defensively (tries several common key names) and degrades to "no metrics found" rather than crashing if something doesn't match. The Recent Performance Data block simply doesn't appear in the prompt until metrics have been collected at least once.
+
 ## Setup
 
 ### 1. Fork / clone this repo
@@ -62,8 +67,10 @@ The workflow runs daily at 04:30 UTC (10:00 AM IST). Trigger manually from the *
 | `scripts/post_reel.py` | Uploads to Zernio + posts to Instagram |
 | `scripts/post_youtube.py` | Uploads to Zernio + posts to YouTube Shorts |
 | `scripts/confirm_post.py` | Writes tracker entry after successful post |
+| `scripts/fetch_analytics.py` | Pulls post metrics from Zernio, merges into `post_history.json` |
 | `scripts/topics_genai.json` | 30 static Gen AI tutorial topics (fallback) |
 | `scripts/topic_tracker.json` | Tracks used topics |
+| `scripts/post_history.json` | Per-topic post IDs + performance metrics (feedback loop) |
 | `.github/workflows/daily_reel.yml` | GitHub Actions schedule + fallback logic |
 
 ## Customise

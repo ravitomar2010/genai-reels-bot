@@ -17,6 +17,7 @@ BASE      = Path(__file__).resolve().parent
 REPO_ROOT = BASE.parent
 OUTPUT    = REPO_ROOT / "generated" / "ai_topic.json"
 TRACKER   = BASE / "topic_tracker.json"
+HISTORY   = BASE / "post_history.json"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL      = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
@@ -75,7 +76,48 @@ def load_used_titles():
     return tracker.get("used_ai_titles", [])
 
 
-def generate_content(trending_headlines, used_titles):
+def _total_views(entry):
+    total = 0
+    found = False
+    for platform in ("instagram", "youtube"):
+        m = entry.get(f"{platform}_metrics")
+        if m and m.get("views") is not None:
+            total += m["views"]
+            found = True
+    return total if found else None
+
+
+def load_performance_summary(top_n=5):
+    """Build a short block summarizing which past topics/hooks performed best
+    and worst, from post_history.json (populated by fetch_analytics.py).
+    Returns "" if no metrics have been collected yet."""
+    if not HISTORY.exists():
+        return ""
+    with open(HISTORY) as f:
+        history = json.load(f)
+
+    scored = [(e, _total_views(e)) for e in history.get("posts", [])]
+    scored = [(e, v) for e, v in scored if v is not None]
+    if not scored:
+        return ""
+
+    scored.sort(key=lambda pair: pair[1], reverse=True)
+    top    = scored[:top_n]
+    bottom = scored[-top_n:] if len(scored) > top_n else []
+
+    def fmt(pair):
+        e, views = pair
+        return f'- "{e["topic_title"]}" (hook: "{e["hook"][:80]}") — {views} views'
+
+    lines = ["Top performing recent topics (lean into these patterns):"]
+    lines += [fmt(p) for p in top]
+    if bottom:
+        lines.append("\nLowest performing recent topics (avoid repeating these patterns):")
+        lines += [fmt(p) for p in bottom]
+    return "\n".join(lines)
+
+
+def generate_content(trending_headlines, used_titles, performance_summary=""):
     """Call Claude to generate viral reel content."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     today  = datetime.date.today().strftime("%B %d, %Y")
@@ -95,10 +137,15 @@ def generate_content(trending_headlines, used_titles):
 
     hashtag_block = " ".join(EVERGREEN_HASHTAGS)
 
+    performance_block = (
+        f"\n## Recent Performance Data\n{performance_summary}\n"
+        if performance_summary else ""
+    )
+
     prompt = f"""You are a viral Instagram Reels content strategist for @agentwave.ai, a Gen AI education account targeting developers, creators, and AI enthusiasts.
 
 Today is {today}.
-
+{performance_block}
 ## Trending AI Headlines (today)
 {headlines_block}
 
@@ -157,6 +204,7 @@ Output ONLY this JSON (no markdown fences, no explanation):
 - youtube_title must be a DIFFERENT phrasing than topic_title — optimize for YouTube search intent (what someone would type), not just a repeat
 - topic_title, hook, points, cta, and thumbnail_text are BOTH the on-screen card text AND the text fed to Hindi text-to-speech for narration — they must be natural Hinglish the way Indian tech creators actually talk, written ENTIRELY in Roman/Latin script (no Devanagari at all) — e.g. "Zyada log AI ka istemal galat tarike se karte hain". Mix casual transliterated Hindi with English/tech words (AI, ChatGPT, prompt, tool, app, video, etc.) exactly as an Indian speaker would say them.
 - youtube_tags must be plain keyword phrases (no # symbol), ordered broad-to-specific
+- If Recent Performance Data is provided above, treat it as real signal, not a suggestion to ignore: favor the topic angles, hook styles, and phrasing patterns from the top performers, and avoid whatever the lowest performers had in common
 - Year references must use {year}, never a hardcoded past year
 - Output raw JSON only"""
 
@@ -188,7 +236,10 @@ def main():
         log(f"  • {h[:80]}")
 
     used_titles = load_used_titles()
-    content     = generate_content(headlines, used_titles)
+    performance = load_performance_summary()
+    if performance:
+        log("Loaded recent post performance data to steer topic selection")
+    content     = generate_content(headlines, used_titles, performance)
 
     variants = content["caption_variants"]
 

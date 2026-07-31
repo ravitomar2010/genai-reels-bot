@@ -7,7 +7,9 @@ Runs fully automated — no human steps needed.
 import json
 from pathlib import Path
 
-from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, upload_image, create_post
+from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, upload_image, create_post, record_post_history
+
+HISTORY_PATH = Path(__file__).resolve().parent / "post_history.json"
 
 
 def find_latest_meta():
@@ -77,6 +79,9 @@ def main():
                                  thumbnail_url, meta.get("engagement_comment"))
     log(f"\nPosted to @agentwave.ai | Post ID: {post_id}")
     log(f"   Topic: {meta['topic_title']}")
+
+    record_post_history(meta["topic_id"], meta["topic_title"], meta.get("hook", ""),
+                        "instagram", post_id, HISTORY_PATH)
 
 
 if __name__ == "__main__":

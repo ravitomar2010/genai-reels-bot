@@ -125,3 +125,50 @@ def create_post(body: dict) -> str:
         return str(post_id or "ok")
 
     return _retry(_post, "Create post")
+
+
+def get_analytics(platform: str = None, account_id: str = None, limit: int = 50) -> list:
+    """Fetch recent post analytics from Zernio. Returns the raw list of records —
+    exact field names per platform aren't fully documented, so callers should
+    inspect entries defensively rather than assume a fixed schema."""
+    def _fetch():
+        params = {"limit": limit, "sortBy": "date"}
+        if platform:
+            params["platform"] = platform
+        if account_id:
+            params["accountId"] = account_id
+        r = requests.get(f"{ZERNIO_BASE}/analytics", headers=HEADERS, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        if isinstance(data, dict):
+            data = data.get("analytics") or data.get("posts") or data.get("data") or []
+        return data
+
+    return _retry(_fetch, f"Fetch analytics ({platform or 'all'})")
+
+
+def record_post_history(topic_id, topic_title, hook, platform, post_id, history_path):
+    """Append/update today's entry for this topic in the post-history log,
+    recording which platform post IDs correspond to which topic so a later
+    analytics pull can be matched back to specific hooks/topics."""
+    import json, datetime
+    from pathlib import Path
+
+    history_path = Path(history_path)
+    data = {"posts": []}
+    if history_path.exists():
+        with open(history_path) as f:
+            data = json.load(f)
+
+    today = str(datetime.date.today())
+    entry = next((p for p in data["posts"] if p["topic_id"] == topic_id and p["date"] == today), None)
+    if entry is None:
+        entry = {"date": today, "topic_id": topic_id, "topic_title": topic_title, "hook": hook}
+        data["posts"].append(entry)
+
+    entry[f"{platform}_post_id"] = post_id
+    entry.setdefault(f"{platform}_metrics", None)
+
+    history_path.parent.mkdir(exist_ok=True, parents=True)
+    with open(history_path, "w") as f:
+        json.dump(data, f, indent=2)

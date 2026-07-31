@@ -8,7 +8,9 @@ YouTube's 3-minute Shorts threshold) — no separate render needed.
 import json
 from pathlib import Path
 
-from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, upload_image, create_post
+from zernio_client import ZERNIO_KEY, log, get_account_id, upload_video, upload_image, create_post, record_post_history
+
+HISTORY_PATH = Path(__file__).resolve().parent / "post_history.json"
 
 
 def find_latest_meta():
@@ -91,6 +93,9 @@ def main():
     post_id = post_to_youtube(media_url, meta, account_id, thumbnail_url)
     log(f"\nPosted to YouTube Shorts | Post ID: {post_id}")
     log(f"   Topic: {meta['topic_title']}")
+
+    record_post_history(meta["topic_id"], meta["topic_title"], meta.get("hook", ""),
+                        "youtube", post_id, HISTORY_PATH)
 
 
 if __name__ == "__main__":

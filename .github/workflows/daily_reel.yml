@@ -33,6 +33,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Fetch post analytics (steers next topic selection)
+        continue-on-error: true   # nice-to-have signal, never block the daily post if Zernio's analytics API errors
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+        run: python3 scripts/fetch_analytics.py
+
       - name: Generate AI content (with fallback to static topics)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -69,11 +75,11 @@ jobs:
       - name: Confirm post (update tracker only on success)
         run: python3 scripts/confirm_post.py
 
-      - name: Save topic tracker (commit back)
+      - name: Save topic tracker + post history (commit back)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add scripts/topic_tracker.json
-          git diff --staged --quiet || git commit -m "chore: advance topic tracker [skip ci]"
+          git add scripts/topic_tracker.json scripts/post_history.json
+          git diff --staged --quiet || git commit -m "chore: advance topic tracker + post history [skip ci]"
           git pull --rebase origin main
           git push

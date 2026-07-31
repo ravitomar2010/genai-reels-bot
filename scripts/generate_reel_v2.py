@@ -1250,6 +1250,7 @@ def generate(topic_id=None):
         "youtube_tags":        topic.get("youtube_tags", []),
         "youtube_hashtags":    topic.get("youtube_hashtags", topic.get("hashtags", "")),
         "engagement_comment":  topic.get("engagement_comment", ""),
+        "hook":                topic.get("hook", ""),
     }
     with open(OUTDIR / "latest_reel_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
