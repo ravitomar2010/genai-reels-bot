@@ -357,16 +357,16 @@ def apply_fade(img, alpha):
     return Image.blend(black, img, max(0,min(1,alpha)))
 
 def draw_follow_badge(img, handle, theme, t, position="bottom"):
-    """Animated 'Follow @handle' branded badge on every slide."""
+    """Animated branded handle badge on every slide (no platform-specific verb)."""
     draw = ImageDraw.Draw(img)
     a = ease_out(min(1, max(0, (t - 0.3) * 3)))
     if a <= 0:
         return img
 
-    label = f"Follow {handle}"
+    label = handle   # no "Follow"/"Subscribe" verb — same badge shows on IG and YouTube
     f_icon = fnt(FONT_BOLD, 32)
     f_text = fnt(FONT_MED, 30)
-    icon_txt = "▶"
+    icon_txt = ">"   # Poppins has no ▶ glyph (renders as tofu box)
     icon_w = int(f_icon.getlength(icon_txt))
     label_w = int(f_text.getlength(label))
     total_w = icon_w + 12 + label_w
@@ -828,7 +828,7 @@ def make_cta_frame(bg, topic, theme, handle, t, slide_idx=6, total_slides=7, sta
     draw = ImageDraw.Draw(img)
 
     tf   = fnt(FONT_BOLD,64)
-    ttxt = "FOLLOW FOR MORE"
+    ttxt = "DON'T MISS OUT"
     tw   = int(tf.getlength(ttxt))
     ta   = ease_out(min(1,t*4))
     draw_text_shadow(draw, ((W-tw)//2,int(H*0.16)), ttxt, tf,
@@ -890,7 +890,9 @@ def render_slide(bg, frame_fn, duration_s, fade_in=0.18, fade_out=0.18):
 
 
 # ── TTS Voiceover ─────────────────────────────────────────────────────────
-VOICE = "en-US-AndrewMultilingualNeural"
+# Hinglish narration (spoken only — on-screen cards stay in English) needs a
+# Hindi-locale voice for correct pronunciation of the Devanagari script.
+VOICE = "hi-IN-SwaraNeural"
 
 
 def get_audio_duration(path):
@@ -917,6 +919,8 @@ def generate_segment_voiceovers(topic, seg_dir):
         print("  edge-tts not installed, skipping voiceover")
         return None
 
+    # hook/title/points/cta are the Hinglish text itself — same content
+    # drives both the on-screen cards and the spoken narration.
     slide_scripts = [
         ("hook",  strip_emoji(topic["hook"].replace("\n", ". "))),
         ("title", strip_emoji(topic["title"])),
