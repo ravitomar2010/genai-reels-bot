@@ -20,17 +20,21 @@ import os, sys, json, hashlib, base64, subprocess, shutil, time
 from pathlib import Path
 
 import requests
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 
 BASE      = Path(__file__).resolve().parent
 REPO_ROOT = BASE.parent
 OUTDIR    = REPO_ROOT / "generated"
 META_PATH = OUTDIR / "latest_reel_meta.json"
 
+VIDEO_W, VIDEO_H = 1080, 1920  # must match generate_reel_v2.py's W, H
+
 PRESENTER_BACKEND       = os.environ.get("PRESENTER_BACKEND", "none").lower()
 PRESENTER_CHAR_REF      = os.environ.get("PRESENTER_CHAR_REF", "assets/character/presenter.png")
 DID_API_KEY             = os.environ.get("DID_API_KEY", "")
 REPLICATE_API_TOKEN     = os.environ.get("REPLICATE_API_TOKEN", "")
 PRESENTER_CACHE_DIR     = Path(os.environ.get("PRESENTER_CACHE_DIR", ".cache/presenter"))
+PRESENTER_OVERLAY_SCALE = float(os.environ.get("PRESENTER_OVERLAY_SCALE", "0.30"))
 
 # Replicate/SadTalker: upstream relicensed to Apache 2.0 (non-commercial
 # restriction removed per their README), but the specific Replicate listing
@@ -200,6 +204,87 @@ def _render_replicate(audio_path: Path, image_path: Path, out_path: Path) -> Pat
     return out_path
 
 
+def _generate_overlay_assets(diameter: int, out_dir: Path, accent=(0, 200, 255)):
+    """Circular alpha mask (for ffmpeg's alphamerge) + a decoration PNG with
+    a soft drop-shadow glow and a crisp accent border ring, fully transparent
+    inside the circle so the presenter video underneath shows through
+    untouched once composited on top."""
+    mask_path = out_dir / "presenter_mask.png"
+    deco_path = out_dir / "presenter_deco.png"
+
+    # Plain white-circle-on-black — alphamerge uses this as the alpha channel
+    mask = Image.new("L", (diameter, diameter), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, diameter - 1, diameter - 1], fill=255)
+    mask.convert("RGB").save(mask_path)
+
+    pad = 20  # room for the shadow blur to extend beyond the circle
+    canvas = diameter + pad * 2
+    cx = cy = canvas // 2
+    r = diameter // 2
+
+    # Soft shadow, blurred, offset down slightly for depth
+    shadow = Image.new("L", (canvas, canvas), 0)
+    ImageDraw.Draw(shadow).ellipse(
+        [cx - r - 6, cy - r - 6 + 4, cx + r + 6, cy + r + 6 + 4], fill=180)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(10))
+
+    # Zero out the shadow inside the circle radius so it only reads as a rim
+    # glow outside the visible presenter footage, never over it
+    hole = Image.new("L", (canvas, canvas), 255)
+    ImageDraw.Draw(hole).ellipse([cx - r, cy - r, cx + r, cy + r], fill=0)
+    shadow_alpha = ImageChops.multiply(shadow, hole)
+
+    deco = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    deco.putalpha(shadow_alpha)
+    ImageDraw.Draw(deco).ellipse([cx - r, cy - r, cx + r, cy + r], outline=(*accent, 255), width=3)
+    deco.save(deco_path)
+
+    return mask_path, deco_path, pad
+
+
+def _apply_overlay(base_video: Path, presenter_clip: Path, out_path: Path,
+                    overlay_scale: float = 0.30) -> Path:
+    """Composite the presenter clip as a circular picture-in-picture overlay
+    onto the already-finished reel (Option A: one extra video re-encode,
+    crf18/preset medium to keep it close to lossless — see docs/presenter.md
+    for why this was chosen over re-encoding once from the PNG frames)."""
+    diameter = int(VIDEO_W * overlay_scale)
+    mask_path, deco_path, pad = _generate_overlay_assets(diameter, out_path.parent)
+
+    # Bottom-right, clear of Instagram safe zones (bottom 20%, right 12%),
+    # plus a small margin so it doesn't sit flush against the boundary
+    margin = 24
+    x = VIDEO_W - int(VIDEO_W * 0.12) - diameter - margin
+    y = VIDEO_H - int(VIDEO_H * 0.20) - diameter - margin
+    deco_x, deco_y = x - pad, y - pad
+
+    filter_complex = (
+        f"[1:v] scale={diameter}:{diameter}:force_original_aspect_ratio=increase,"
+        f"crop={diameter}:{diameter},setsar=1 [pcrop];"
+        f"[pcrop][2:v] alphamerge [pcircle];"
+        f"[0:v][pcircle] overlay={x}:{y}:shortest=1 [with_video];"
+        f"[with_video][3:v] overlay={deco_x}:{deco_y} [outv]"
+    )
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(base_video),
+        "-stream_loop", "-1", "-i", str(presenter_clip),  # loop if shorter than the reel
+        "-loop", "1", "-i", str(mask_path),
+        "-loop", "1", "-i", str(deco_path),
+        "-filter_complex", filter_complex,
+        "-map", "[outv]", "-map", "0:a",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-c:a", "copy",
+        "-movflags", "+faststart",
+        str(out_path),
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if r.returncode != 0:
+        raise RuntimeError(f"ffmpeg overlay failed: {r.stderr[-800:]}")
+    return out_path
+
+
 _BACKENDS = {"did": _render_did, "replicate": _render_replicate}
 
 
@@ -300,10 +385,8 @@ def main():
             f"Add a static character PNG there, or point PRESENTER_CHAR_REF at one.")
         return
 
-    # Render (or reuse cached) presenter clip. Any failure here leaves meta
-    # completely untouched — reel ships exactly as generate_reel_v2.py made it.
-    # NOTE: this is the pre-overlay version — presenter_clip is recorded but
-    # nothing composites it onto the reel yet. That's the next commit.
+    # Stage 1: render (or reuse cached) presenter clip. Any failure here
+    # leaves meta completely untouched — reel ships exactly as generate_reel_v2.py made it.
     try:
         resampled = _resample_audio(Path(voiceover_path))
         key = _cache_key(resampled, char_ref, PRESENTER_BACKEND)
@@ -318,14 +401,26 @@ def main():
             _BACKENDS[PRESENTER_BACKEND](resampled, char_ref, raw_out)
             clip_path = _cache_put(key, raw_out)
             log(f"Cached result at {clip_path}")
-
-        meta["presenter_clip"] = str(clip_path)
-        with open(META_PATH, "w") as f:
-            json.dump(meta, f, indent=2)
-        log(f"presenter_clip set: {clip_path}")
     except Exception as e:
         log(f"Presenter render failed, shipping reel without overlay: {e}")
-        # presenter_clip stays None — do not modify meta, do not raise.
+        return  # meta untouched, presenter_clip stays None
+
+    # Stage 2: composite onto the finished reel. Kept separate from stage 1 —
+    # a rendered-but-uncompositable clip must still fall back to the plain
+    # reel, not crash the run.
+    try:
+        composited_path = OUTDIR / f"reel_with_presenter_{meta['topic_id']}.mp4"
+        _apply_overlay(Path(meta["video_path"]), clip_path, composited_path,
+                        overlay_scale=PRESENTER_OVERLAY_SCALE)
+        meta["video_path"]      = str(composited_path)
+        meta["presenter_clip"]  = str(clip_path)
+        with open(META_PATH, "w") as f:
+            json.dump(meta, f, indent=2)
+        log(f"Overlay composited: {composited_path}")
+    except Exception as e:
+        log(f"Overlay compositing failed, shipping reel without overlay: {e}")
+        # meta["video_path"] stays the original finished reel; presenter_clip
+        # stays None too — no overlay was actually baked into anything.
 
 
 if __name__ == "__main__":
