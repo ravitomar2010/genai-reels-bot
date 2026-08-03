@@ -1227,7 +1227,9 @@ def generate(topic_id=None):
     cover_seg  = (None, COVER_DUR)
     all_segs   = [cover_seg] + (segments or [])
     slide_durs = [COVER_DUR, hook_dur, title_dur] + point_durs + [cta_dur]
-    vo_full    = Path("/tmp/reel_voiceover_full.mp3")
+    # Stable path (not /tmp) — generate_presenter.py reads this clean,
+    # pre-music voiceover as its input in a later, separate workflow step.
+    vo_full    = OUTDIR / f"voiceover_topic{topic['id']}.mp3"
     voiceover  = concatenate_audio_segments(all_segs, slide_durs, vo_full) \
                  if segments else None
 
@@ -1251,6 +1253,8 @@ def generate(topic_id=None):
         "youtube_hashtags":    topic.get("youtube_hashtags", topic.get("hashtags", "")),
         "engagement_comment":  topic.get("engagement_comment", ""),
         "hook":                topic.get("hook", ""),
+        "voiceover_path":      str(vo_full) if voiceover else None,
+        "presenter_clip":      None,  # filled in by generate_presenter.py, if enabled
     }
     with open(OUTDIR / "latest_reel_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
