@@ -68,7 +68,6 @@ jobs:
           PRESENTER_CHAR_REF: assets/character/presenter.png
           DID_API_KEY: ${{ secrets.DID_API_KEY }}
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
-          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
         run: python3 scripts/generate_presenter.py
 
       - name: Post to Instagram via Zernio
