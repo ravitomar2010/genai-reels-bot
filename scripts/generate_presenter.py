@@ -79,35 +79,42 @@ def _cache_put(key: str, clip_path: Path) -> Path:
     return dest
 
 
-def _upload_public(path: Path, content_type: str) -> str:
-    """Host a local file at a public HTTPS URL via Zernio's presign flow —
-    already a working dependency in this pipeline. D-ID needs source_url/
-    audio_url as real URLs, it doesn't accept direct file uploads."""
-    sys.path.insert(0, str(BASE))
-    from zernio_client import ZERNIO_BASE, HEADERS
-
-    r = requests.post(f"{ZERNIO_BASE}/media/presign", headers=HEADERS,
-                       json={"filename": path.name, "contentType": content_type}, timeout=30)
+def _did_upload_image(image_path: Path, headers: dict) -> str:
+    """D-ID's own POST /images — multipart upload, D-ID hosts it (24-48h),
+    returns a url to use as source_url. No third-party host involved."""
+    with open(image_path, "rb") as f:
+        r = requests.post("https://api.d-id.com/images",
+                           headers={"Authorization": headers["Authorization"]},
+                           files={"image": (image_path.name, f, "image/png")}, timeout=60)
     r.raise_for_status()
-    data = r.json()
-    upload_url, public_url = data["uploadUrl"], data["publicUrl"]
-    with open(path, "rb") as f:
-        up = requests.put(upload_url, data=f.read(), headers={"Content-Type": content_type}, timeout=120)
-    up.raise_for_status()
-    return public_url
+    return r.json()["url"]
+
+
+def _did_upload_audio(audio_path: Path, headers: dict) -> str:
+    """D-ID's own POST /audios — multipart upload (max 6MB; our ~35-40s clips
+    at 16kHz mono WAV are ~1.2-1.4MB, comfortably under that). D-ID stores it
+    as a 16kHz WAV itself and returns a url to use as audio_url."""
+    with open(audio_path, "rb") as f:
+        r = requests.post("https://api.d-id.com/audios",
+                           headers={"Authorization": headers["Authorization"]},
+                           files={"audio": (audio_path.name, f, "audio/wav")}, timeout=60)
+    r.raise_for_status()
+    return r.json()["url"]
 
 
 def _render_did(audio_path: Path, image_path: Path, out_path: Path) -> Path:
-    """D-ID /talks API — cloud HTTPS call, no GPU/model needed on our side."""
+    """D-ID /talks API — cloud HTTPS call, no GPU/model needed on our side.
+    Uses D-ID's own upload endpoints (/images, /audios) to host inputs —
+    no third-party service holds the character image or voiceover audio."""
     if not DID_API_KEY:
         raise RuntimeError("DID_API_KEY not set")
 
-    log("  Uploading audio + character image (D-ID needs public URLs, not file uploads)...")
-    audio_url = _upload_public(audio_path, "audio/mpeg" if audio_path.suffix == ".mp3" else "audio/wav")
-    image_url = _upload_public(image_path, "image/png")
-
     auth = base64.b64encode(DID_API_KEY.encode()).decode()  # key is already "user:pass"-shaped
     headers = {"Authorization": f"Basic {auth}", "Content-Type": "application/json"}
+
+    log("  Uploading audio + character image to D-ID's own hosting...")
+    image_url = _did_upload_image(image_path, headers)
+    audio_url = _did_upload_audio(audio_path, headers)
 
     log("  Creating D-ID talk...")
     r = requests.post(
@@ -316,16 +323,6 @@ def _check_config(meta=None):
                              "is not 'true' (see license note in this file / docs/presenter.md)")
         if not REPLICATE_API_TOKEN:
             problems.append("PRESENTER_BACKEND=replicate but REPLICATE_API_TOKEN is not set")
-
-    if PRESENTER_BACKEND == "did":
-        try:
-            sys.path.insert(0, str(BASE))
-            from zernio_client import ZERNIO_KEY
-            if not ZERNIO_KEY:
-                problems.append("D-ID backend needs Zernio to host audio/image URLs, "
-                                 "but ZERNIO_API_KEY is not set")
-        except ImportError:
-            problems.append("Could not import zernio_client.py")
 
     if meta is not None:
         voiceover_path = meta.get("voiceover_path")

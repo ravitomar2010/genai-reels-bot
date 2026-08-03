@@ -10,7 +10,8 @@ Usage:
 
 Backend defaults to $PRESENTER_BACKEND if --backend isn't passed. Reads the
 same env vars as generate_presenter.py (DID_API_KEY, REPLICATE_API_TOKEN,
-REPLICATE_LICENSE_CONFIRMED, ZERNIO_API_KEY for D-ID's hosting step).
+REPLICATE_LICENSE_CONFIRMED). D-ID hosts its own inputs via its /images and
+/audios upload endpoints — no third-party hosting dependency.
 """
 
 import sys, argparse

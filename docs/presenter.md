@@ -93,6 +93,26 @@ that point. Two options were considered:
 Instagram/YouTube re-encode on upload regardless, so the marginal quality loss from
 one extra local generation is not the dominant factor either way.
 
+**No third-party file hosting — D-ID hosts its own inputs.** D-ID's `/talks` endpoint
+needs `source_url`/`audio_url` as fetchable URLs, not direct uploads, which raised a
+real question: host them where? An earlier version of this reused Zernio's (already a
+dependency in this pipeline, for posting) `/media/presign` flow to stage the character
+image and voiceover audio at a public URL for D-ID to fetch. That worked, but it was
+wrong: Zernio's own docs describe that flow as "temporary storage for 7 days until a
+post using them publishes" — a mechanism for staging content Zernio itself is about to
+post, not a general-purpose file host, and reusing it for an unrelated third party's
+fetch is exactly the kind of dependency that quietly breaks if that endpoint's terms
+tighten later. It also meant an unannounced external service holding the daily
+voiceover and character asset, which should be a deliberate choice, not an
+implementation detail.
+
+D-ID has its own upload endpoints — `POST /images` and `POST /audios`, both
+multipart/form-data, both returning a D-ID-hosted `url` (images: 24-48h retention;
+audio: D-ID transcodes to 16kHz WAV itself, 6MB max — our ~35-40s clips run
+~1.2-1.4MB, comfortably under that). Using these instead removes Zernio from the
+presenter path entirely: one less moving part, and nothing of yours sits on a
+third-party server for this feature to work.
+
 ## Failure handling
 
 Every failure mode (missing config, API error, timeout, overlay compositing failure)
