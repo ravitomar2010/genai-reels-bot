@@ -61,6 +61,16 @@ jobs:
       - name: Generate Reel video
         run: python3 scripts/generate_reel_v2.py
 
+      - name: Generate presenter overlay (optional, off by default)
+        continue-on-error: true   # a presenter failure must never break the daily reel
+        env:
+          PRESENTER_BACKEND: none   # flip manually to did/replicate once ready — see docs/presenter.md
+          PRESENTER_CHAR_REF: assets/character/presenter.png
+          DID_API_KEY: ${{ secrets.DID_API_KEY }}
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+        run: python3 scripts/generate_presenter.py
+
       - name: Post to Instagram via Zernio
         env:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
