@@ -59,6 +59,8 @@ jobs:
           python3 -c "from PIL import ImageFont; f=ImageFont.truetype('/usr/share/fonts/truetype/google-fonts/Poppins-Bold.ttf',100); print(f'Font loaded OK: {f.getlength(\"Test\")}px wide')" || echo "FONT LOAD FAILED"
 
       - name: Generate Reel video
+        env:
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
         run: python3 scripts/generate_reel_v2.py
 
       - name: Generate presenter overlay (optional, off by default)
