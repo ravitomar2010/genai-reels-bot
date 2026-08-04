@@ -890,9 +890,51 @@ def render_slide(bg, frame_fn, duration_s, fade_in=0.18, fade_out=0.18):
 
 
 # ── TTS Voiceover ─────────────────────────────────────────────────────────
-# Hinglish narration (spoken only — on-screen cards stay in English) needs a
-# Hindi-locale voice for correct pronunciation of the Devanagari script.
+# Content is plain English (see ai_content_generator.py) — English tracks far
+# more reliably through TTS and downstream lip-sync than code-switched
+# Hinglish did (tried first, see git history). This fallback voice keeps the
+# same Indian-accented delivery as the primary Sarvam voice below.
 VOICE = "hi-IN-SwaraNeural"
+
+# Sarvam AI's TTS (Bulbul) is the primary voice — "ritu" was picked after
+# comparing several voices side by side on both Hindi and English test lines.
+# Tried first per-segment when configured; any failure falls back to
+# edge-tts so a Sarvam outage/quota issue never breaks the daily unattended
+# render.
+SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
+SARVAM_SPEAKER = os.environ.get("SARVAM_SPEAKER", "ritu")  # female bulbul:v3 voice — best of
+                                                             # ritu/neha/pooja/shubh/aditya/rahul
+                                                             # on both Hindi and English content in
+                                                             # side-by-side testing. "shubh" (male)
+                                                             # was the runner-up if a change is wanted.
+SARVAM_MODEL   = "bulbul:v3"
+
+
+def _sarvam_tts(text: str, out_path: Path) -> bool:
+    """POST to Sarvam's TTS API, decode the base64 result to out_path.
+    Returns True on success, False on any failure (caller falls back to
+    edge-tts for this segment — never raises)."""
+    import requests, base64
+    try:
+        r = requests.post(
+            "https://api.sarvam.ai/text-to-speech",
+            headers={"api-subscription-key": SARVAM_API_KEY, "Content-Type": "application/json"},
+            json={
+                "text": text,
+                "language_code": "hi-IN",
+                "speaker": SARVAM_SPEAKER,
+                "model": SARVAM_MODEL,
+                "output_audio_codec": "mp3",
+            },
+            timeout=30,
+        )
+        r.raise_for_status()
+        audio_b64 = r.json()["audios"][0]
+        out_path.write_bytes(base64.b64decode(audio_b64))
+        return out_path.exists() and out_path.stat().st_size > 0
+    except Exception as e:
+        print(f"    Sarvam TTS failed ({e}) — falling back to edge-tts for this segment")
+        return False
 
 
 def get_audio_duration(path):
@@ -931,16 +973,28 @@ def generate_segment_voiceovers(topic, seg_dir):
 
     print(f"  Generating {len(slide_scripts)} voiceover segments...")
 
+    non_empty = [(n, t) for n, t in slide_scripts if t.strip()]
+    edge_needed = non_empty
+    if SARVAM_API_KEY:
+        print("  Trying Sarvam AI TTS...")
+        edge_needed = []
+        for name, text in non_empty:
+            out = seg_dir / f"seg_{name}.mp3"
+            if not _sarvam_tts(text, out):
+                edge_needed.append((name, text))
+        if edge_needed:
+            print(f"  {len(edge_needed)}/{len(non_empty)} segment(s) falling back to edge-tts")
+
     async def _gen_all():
         coros = []
-        for name, text in slide_scripts:
-            if text.strip():
-                out = seg_dir / f"seg_{name}.mp3"
-                comm = edge_tts.Communicate(text, VOICE, rate="+0%", pitch="+2Hz")
-                coros.append(comm.save(str(out)))
+        for name, text in edge_needed:
+            out = seg_dir / f"seg_{name}.mp3"
+            comm = edge_tts.Communicate(text, VOICE, rate="+0%", pitch="+2Hz")
+            coros.append(comm.save(str(out)))
         await asyncio.gather(*coros)
 
-    asyncio.run(_gen_all())
+    if edge_needed:
+        asyncio.run(_gen_all())
 
     results = []
     for name, _ in slide_scripts:

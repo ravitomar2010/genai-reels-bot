@@ -159,20 +159,20 @@ Create ONE Instagram Reel topic about Gen AI that will perform well on Instagram
 Output ONLY this JSON (no markdown fences, no explanation):
 
 {{
-  "topic_title": "Short punchy Hinglish title (max 8 words)",
-  "hook": "One bold claim or surprising fact, in Hinglish — no emoji, max 15 words",
-  "points": ["Concise Hinglish point 1 (max 10 words)", "Point 2", "Point 3", "Point 4"],
-  "cta": "Engaging Hinglish call to action (max 12 words) — platform-neutral, works whether the viewer is on Instagram or YouTube",
+  "topic_title": "Short punchy title (max 8 words)",
+  "hook": "One bold claim or surprising fact — no emoji, max 15 words",
+  "points": ["Concise point 1 (max 10 words)", "Point 2", "Point 3", "Point 4"],
+  "cta": "Engaging call to action (max 12 words) — platform-neutral, works whether the viewer is on Instagram or YouTube",
   "caption_variants": [
     {{
-      "caption": "Educational angle: teaches something concrete, opens with a clear insight, 3–5 punchy lines, no fluff",
+      "caption": "In English. Educational angle: teaches something concrete, opens with a clear insight, 3–5 punchy lines, no fluff",
       "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5",
       "virality_score": 8,
       "angle": "educational",
       "use_when": "always"
     }},
     {{
-      "caption": "News-reaction angle: references today's headline directly, opinionated take, conversational tone",
+      "caption": "In English. News-reaction angle: references today's headline directly, opinionated take, conversational tone",
       "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5",
       "virality_score": 9,
       "angle": "news-reaction",
@@ -182,12 +182,12 @@ Output ONLY this JSON (no markdown fences, no explanation):
   "has_strong_headline": true,
   "trend_source": "Which headline or trend inspired this topic",
   "bg_prompt": "Pollinations.ai image prompt for an engaging background",
-  "thumbnail_text": "3-5 word punchy Hinglish thumbnail overlay, no punctuation — must be readable at a glance, distinct from the full hook",
+  "thumbnail_text": "3-5 word punchy thumbnail overlay (Title Case, no punctuation) — must be readable at a glance, distinct from the full hook",
   "youtube_title": "SEO-friendly YouTube Shorts title, max 100 chars, front-load the keyword/hook — English, for search discoverability",
   "youtube_description": "2-4 sentence keyword-rich description expanding on the hook and points, written for YouTube search — English (not identical to the IG caption)",
   "youtube_tags": ["10-15 short keyword tags, no # symbol, e.g. artificial intelligence, ai tools, machine learning"],
   "youtube_hashtags": "#Tag1 #Tag2 #Tag3 (exactly 3 — YouTube only displays the first 3 above the title)",
-  "engagement_comment": "A short question or reply-bait line (max 15 words) to auto-post as the pinned first comment on both platforms — invites replies, not a repeat of the caption"
+  "engagement_comment": "A short question or reply-bait line (max 15 words), in English, to auto-post as the pinned first comment on both platforms — invites replies, not a repeat of the caption"
 }}
 
 ## Content guardrails
@@ -202,10 +202,11 @@ Output ONLY this JSON (no markdown fences, no explanation):
 - cta is rendered as pixels in the one shared video file posted to BOTH platforms — never say "Follow" or "Subscribe" explicitly (wrong verb on the other platform); prefer phrasing like "more daily on @agentwave.ai", "save this for later", "turn on notifications so you don't miss the next one"
 - engagement_comment must invite a reply (a question, a "which one are you trying first" prompt, a poll-style either/or) — this is what drives comment-reply engagement, not another summary of the topic
 - youtube_title must be a DIFFERENT phrasing than topic_title — optimize for YouTube search intent (what someone would type), not just a repeat
-- topic_title, hook, points, cta, and thumbnail_text are BOTH the on-screen card text AND the text fed to Hindi text-to-speech for narration — they must be natural Hinglish the way Indian tech creators actually talk, written ENTIRELY in Roman/Latin script (no Devanagari at all) — e.g. "Zyada log AI ka istemal galat tarike se karte hain". Mix casual transliterated Hindi with English/tech words (AI, ChatGPT, prompt, tool, app, video, etc.) exactly as an Indian speaker would say them.
+- topic_title, hook, points, cta, and thumbnail_text are BOTH the on-screen card text AND the text fed to text-to-speech for narration — write these in clear, plain English. The target audience is educated professionals/developers, not a Hinglish-speaking niche — English reads and pronounces more reliably through the TTS/lip-sync pipeline than code-switched Hindi-English does.
 - youtube_tags must be plain keyword phrases (no # symbol), ordered broad-to-specific
 - If Recent Performance Data is provided above, treat it as real signal, not a suggestion to ignore: favor the topic angles, hook styles, and phrasing patterns from the top performers, and avoid whatever the lowest performers had in common
 - Year references must use {year}, never a hardcoded past year
+- Every field in this output — caption, hashtags, engagement_comment, everything — must be in plain English, no exceptions
 - Output raw JSON only"""
 
     log(f"Calling Claude ({CLAUDE_MODEL})...")
