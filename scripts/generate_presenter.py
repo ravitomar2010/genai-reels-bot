@@ -123,6 +123,12 @@ def _render_did(audio_path: Path, image_path: Path, out_path: Path) -> Path:
         json={
             "source_url": image_url,
             "script": {"type": "audio", "audio_url": audio_url},
+            # First smoke test used none of these (D-ID defaults) and the
+            # result looked unnatural. Both are D-ID's own documented levers
+            # for that: stitch blends the animated face back into the
+            # original photo instead of an isolated crop, fluent smooths
+            # frame-to-frame transitions instead of jarring cuts.
+            "config": {"stitch": True, "fluent": True},
         },
         timeout=30,
     )
