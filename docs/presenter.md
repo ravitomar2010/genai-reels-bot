@@ -23,32 +23,50 @@ never runs a model locally.
    `scripts/smoke_presenter.py` before trusting it in production.
 2. Get a D-ID API key (Studio account → API keys). It's a `username:password`-shaped
    string, used as-is for HTTP Basic auth — see `docs.d-id.com/reference/basic-authentication`.
-3. Add `DID_API_KEY` (and `REPLICATE_API_TOKEN` if you plan to use that backend) as
-   GitHub repo secrets.
-4. Flip `PRESENTER_BACKEND` from `none` to `did` in `.github/workflows/daily_reel.yml`
-   when you're ready to enable it. It's left as `none` in the workflow deliberately —
-   flip it manually.
+3. Add `DID_API_KEY` / `SYNC_API_KEY` (and `REPLICATE_API_TOKEN` if you plan to use that
+   backend) as GitHub repo secrets. The `sync` backend also needs `ZERNIO_API_KEY` —
+   see the backend comparison below for why.
+4. Flip `PRESENTER_BACKEND` from `none` to `did`/`sync`/`replicate` in
+   `.github/workflows/daily_reel.yml` when you're ready to enable it. It's left as
+   `none` in the workflow deliberately — flip it manually.
 
 ## Env vars
 
 | Var | Default | Notes |
 |---|---|---|
-| `PRESENTER_BACKEND` | `none` | `none` \| `did` \| `replicate` |
+| `PRESENTER_BACKEND` | `none` | `none` \| `did` \| `sync` \| `replicate` |
 | `PRESENTER_CHAR_REF` | `assets/character/presenter.png` | Static character image |
 | `DID_API_KEY` | *(empty)* | `username:password` string from D-ID Studio |
+| `SYNC_API_KEY` | *(empty)* | From sync.so account settings |
 | `REPLICATE_API_TOKEN` | *(empty)* | Only needed for the gated Replicate backend |
 | `REPLICATE_LICENSE_CONFIRMED` | *(empty)* | Must be exactly `true` to enable Replicate — see License below |
+| `ZERNIO_API_KEY` | *(empty)* | Only used by the `sync` backend, to host audio/image at a public URL — see below |
 | `PRESENTER_CACHE_DIR` | `.cache/presenter` | Rendered clips keyed on `sha256(audio + image + backend)` |
 | `PRESENTER_OVERLAY_SCALE` | `0.30` | Overlay diameter as a fraction of the 1080px frame width |
 
+## Backend comparison (from actual testing, not just docs)
+
+| | D-ID | Sync (`sync-3`) | Hedra |
+|---|---|---|---|
+| Coded in | Yes | Yes | No — schema verified live, never implemented |
+| Real render tested | Yes | Yes | No — blocked on a $0 API wallet balance, never got past submission |
+| Aspect ratio | Forces a square crop (512×512 in testing) | **Preserves the source image's aspect ratio** (928×1152 in testing) | Unverified |
+| Watermark | **Yes, on the free/trial tier** | Free tier output is watermarked too (1 `sync-3` gen/month, 15s cap) | Unverified |
+| File hosting | Has its own upload endpoints (`/images`, `/audios`) — no third party needed | **No upload endpoint** — `/v2/assets` only accepts `{url, type}` JSON, so hosting via Zernio's presign flow is genuinely required, not optional | Has its own (`/files`) |
+| Body movement | Face/head only | Face/head only | Full body, per their marketing (untested here) |
+
+Neither is flipped on by default — this is a menu, not a ranking. D-ID was simply built
+first, before Sync/Hedra were researched; it isn't "the" choice.
+
 ## Swapping backends
 
-Both backends implement the same contract: `(audio_path, image_path, out_path) -> Path`,
-as plain functions in `scripts/generate_presenter.py` (`_render_did`, `_render_replicate`)
-— no class hierarchy, matching this repo's flat style. Adding a third backend means
-writing one more function with that same signature and adding it to the `_BACKENDS` dict.
+All backends implement the same contract: `(audio_path, image_path, out_path) -> Path`,
+as plain functions in `scripts/generate_presenter.py` (`_render_did`, `_render_sync`,
+`_render_replicate`) — no class hierarchy, matching this repo's flat style. Adding
+another backend means writing one more function with that same signature and adding
+it to the `_BACKENDS` dict.
 
-## License finding — why D-ID is primary, not Replicate/SadTalker
+## License finding — why Replicate/SadTalker is gated
 
 Two directly conflicting sources:
 - **Upstream OpenTalker/SadTalker README** (current): *"The license has been updated to
@@ -134,16 +152,25 @@ makes one real API call against a sample file, outside the daily pipeline — us
 checking a new character image or backend before trusting it in production. This does
 bill whatever that backend charges for one render.
 
-## Cost / latency per reel (D-ID)
+## Cost / latency per reel
 
-- **Latency:** D-ID's own docs describe short talking-photo renders as typically
+**D-ID:**
+- Latency: their own docs describe short talking-photo renders as typically
   10-30 seconds; `generate_presenter.py` polls for up to ~5 minutes before giving up
   and falling back to no overlay.
-- **Cost:** D-ID's Lite tier is roughly $4.70-5.90/month for 10 minutes of generated
-  video included. At ~30-40s of narration/day × 30 days ≈ 15-20 minutes/month, daily
-  use would exceed the Lite tier's included minutes — check current tier limits and
-  overage pricing at D-ID's pricing page before enabling this daily, since exact
-  numbers weren't independently re-verified beyond what was researched earlier in
-  this project.
-- Every unchanged re-run costs nothing extra — the sha256 cache means the same
-  audio+image+backend combination is never re-rendered or re-billed.
+- Cost: Lite tier is roughly $4.70-5.90/month for 10 minutes of generated video
+  included. At ~30-40s of narration/day × 30 days ≈ 15-20 minutes/month, daily use
+  would exceed the Lite tier's included minutes — check current tier limits and
+  overage pricing before enabling this daily.
+
+**Sync (`sync-3`):**
+- Latency: took several minutes in live testing (not the 10-30s D-ID claims) —
+  `generate_presenter.py` polls for up to ~15 minutes before giving up.
+- Cost: usage-based, not credits — Hobbyist $5/mo + ~$0.107-0.133/sec for `sync-3`
+  specifically (cheaper models exist but need an existing video, ruled out for this
+  pipeline). A 30s reel ≈ $3.20-4/render; daily for a month ≈ $96-120 + the $5 fee —
+  meaningfully pricier than D-ID at daily volume. Free tier: 1 `sync-3` generation/month,
+  15s cap, watermarked — enough for one sanity check, not for evaluating daily use.
+
+Every unchanged re-run costs nothing extra on either backend — the sha256 cache means
+the same audio+image+backend combination is never re-rendered or re-billed.

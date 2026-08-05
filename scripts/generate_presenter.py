@@ -33,6 +33,7 @@ PRESENTER_BACKEND       = os.environ.get("PRESENTER_BACKEND", "none").lower()
 PRESENTER_CHAR_REF      = os.environ.get("PRESENTER_CHAR_REF", "assets/character/presenter.png")
 DID_API_KEY             = os.environ.get("DID_API_KEY", "")
 REPLICATE_API_TOKEN     = os.environ.get("REPLICATE_API_TOKEN", "")
+SYNC_API_KEY            = os.environ.get("SYNC_API_KEY", "")
 PRESENTER_CACHE_DIR     = Path(os.environ.get("PRESENTER_CACHE_DIR", ".cache/presenter"))
 PRESENTER_OVERLAY_SCALE = float(os.environ.get("PRESENTER_OVERLAY_SCALE", "0.30"))
 
@@ -217,6 +218,84 @@ def _render_replicate(audio_path: Path, image_path: Path, out_path: Path) -> Pat
     return out_path
 
 
+def _sync_host_public(path: Path, content_type: str) -> str:
+    """Host a local file at a public HTTPS URL via Zernio's presign flow.
+
+    Unlike D-ID (POST /images, /audios) and Hedra (POST /files), Sync's
+    POST /v2/assets is a URL-*registration* call, not a byte-upload endpoint
+    — verified empirically: it 400s on multipart with "url: expected string,
+    received undefined", i.e. it wants JSON {url, type}, always. So hosting
+    elsewhere first is a genuine requirement here, not a redundant dependency
+    the way it would be for D-ID/Hedra."""
+    sys.path.insert(0, str(BASE))
+    from zernio_client import ZERNIO_BASE, HEADERS as ZERNIO_HEADERS
+
+    r = requests.post(f"{ZERNIO_BASE}/media/presign", headers=ZERNIO_HEADERS,
+                       json={"filename": path.name, "contentType": content_type}, timeout=30)
+    r.raise_for_status()
+    data = r.json()
+    upload_url, public_url = data["uploadUrl"], data["publicUrl"]
+    with open(path, "rb") as f:
+        up = requests.put(upload_url, data=f.read(), headers={"Content-Type": content_type}, timeout=120)
+    up.raise_for_status()
+    return public_url
+
+
+def _render_sync(audio_path: Path, image_path: Path, out_path: Path) -> Path:
+    """Sync.so — sync-3 model specifically. sync-3 is the only Sync model
+    that generates from a static image (lipsync-2/lipsync-2-pro need an
+    existing video with the person already moving, ruled out for this
+    pipeline). Verified via live testing: correctly preserves the source
+    image's aspect ratio (no forced square crop like D-ID), and the free
+    tier includes real API access (1 sync-3 generation/month, 15s cap,
+    watermarked) for a zero-cost sanity check before paying anything."""
+    if not SYNC_API_KEY:
+        raise RuntimeError("SYNC_API_KEY not set")
+
+    log("  Hosting audio + character image (Sync needs public URLs, has no direct upload)...")
+    image_url = _sync_host_public(image_path, "image/png")
+    audio_url = _sync_host_public(audio_path, "audio/mpeg" if audio_path.suffix == ".mp3" else "audio/wav")
+
+    headers = {"x-api-key": SYNC_API_KEY, "Content-Type": "application/json"}
+
+    log("  Creating Sync generation (sync-3)...")
+    r = requests.post(
+        "https://api.sync.so/v2/generate",
+        headers=headers,
+        json={
+            "model": "sync-3",
+            "input": [
+                {"type": "image", "url": image_url},
+                {"type": "audio", "url": audio_url},
+            ],
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    job_id = r.json()["id"]
+
+    log(f"  Polling Sync job {job_id}...")
+    for attempt in range(90):  # took several minutes in testing — longer than D-ID's typical 10-30s
+        time.sleep(10)
+        pr = requests.get(f"https://api.sync.so/v2/generate/{job_id}", headers=headers, timeout=30)
+        pr.raise_for_status()
+        data = pr.json()
+        status = data.get("status")
+        if status == "COMPLETED":
+            result_url = data["outputUrl"]
+            break
+        if status in ("FAILED", "REJECTED"):
+            raise RuntimeError(f"Sync generation {status.lower()}: {data.get('error')}")
+    else:
+        raise RuntimeError("Sync generation timed out after ~15 minutes")
+
+    log("  Downloading Sync result...")
+    dl = requests.get(result_url, timeout=120)
+    dl.raise_for_status()
+    out_path.write_bytes(dl.content)
+    return out_path
+
+
 def _generate_overlay_assets(diameter: int, out_dir: Path, accent=(0, 200, 255)):
     """Circular alpha mask (for ffmpeg's alphamerge) + a decoration PNG with
     a soft drop-shadow glow and a crisp accent border ring, fully transparent
@@ -298,7 +377,7 @@ def _apply_overlay(base_video: Path, presenter_clip: Path, out_path: Path,
     return out_path
 
 
-_BACKENDS = {"did": _render_did, "replicate": _render_replicate}
+_BACKENDS = {"did": _render_did, "replicate": _render_replicate, "sync": _render_sync}
 
 
 def _check_config(meta=None):
@@ -323,12 +402,24 @@ def _check_config(meta=None):
 
     if PRESENTER_BACKEND == "did" and not DID_API_KEY:
         problems.append("PRESENTER_BACKEND=did but DID_API_KEY is not set")
+    if PRESENTER_BACKEND == "sync" and not SYNC_API_KEY:
+        problems.append("PRESENTER_BACKEND=sync but SYNC_API_KEY is not set")
     if PRESENTER_BACKEND == "replicate":
         if not REPLICATE_LICENSE_CONFIRMED:
             problems.append("PRESENTER_BACKEND=replicate but REPLICATE_LICENSE_CONFIRMED "
                              "is not 'true' (see license note in this file / docs/presenter.md)")
         if not REPLICATE_API_TOKEN:
             problems.append("PRESENTER_BACKEND=replicate but REPLICATE_API_TOKEN is not set")
+
+    if PRESENTER_BACKEND == "sync":
+        try:
+            sys.path.insert(0, str(BASE))
+            from zernio_client import ZERNIO_KEY
+            if not ZERNIO_KEY:
+                problems.append("Sync backend needs Zernio to host audio/image URLs "
+                                 "(Sync has no direct upload endpoint), but ZERNIO_API_KEY is not set")
+        except ImportError:
+            problems.append("Could not import zernio_client.py")
 
     if meta is not None:
         voiceover_path = meta.get("voiceover_path")

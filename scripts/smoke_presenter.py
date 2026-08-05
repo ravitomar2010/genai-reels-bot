@@ -6,12 +6,14 @@ a real API call (this is NOT a --dry-run) and costs whatever that backend
 bills for one render.
 
 Usage:
-    python3 scripts/smoke_presenter.py --audio path/to/audio.mp3 --image path/to/char.png [--backend did|replicate] [--out out.mp4]
+    python3 scripts/smoke_presenter.py --audio path/to/audio.mp3 --image path/to/char.png [--backend did|replicate|sync] [--out out.mp4]
 
 Backend defaults to $PRESENTER_BACKEND if --backend isn't passed. Reads the
 same env vars as generate_presenter.py (DID_API_KEY, REPLICATE_API_TOKEN,
-REPLICATE_LICENSE_CONFIRMED). D-ID hosts its own inputs via its /images and
-/audios upload endpoints — no third-party hosting dependency.
+REPLICATE_LICENSE_CONFIRMED, SYNC_API_KEY). D-ID hosts its own inputs via
+its /images and /audios upload endpoints; Sync does not (its /v2/assets is
+a URL-registration call, not a byte upload) so the sync backend also needs
+ZERNIO_API_KEY to host the audio/image at a public URL first.
 """
 
 import sys, argparse
@@ -25,7 +27,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--audio", required=True, type=Path)
     ap.add_argument("--image", required=True, type=Path)
-    ap.add_argument("--backend", choices=["did", "replicate"], default=gp.PRESENTER_BACKEND)
+    ap.add_argument("--backend", choices=["did", "replicate", "sync"], default=gp.PRESENTER_BACKEND)
     ap.add_argument("--out", type=Path, default=Path("smoke_presenter_out.mp4"))
     ap.add_argument("--skip-overlay", action="store_true",
                      help="Only render the talking-head clip, don't composite it onto anything")
