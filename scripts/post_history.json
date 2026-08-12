@@ -119,6 +119,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a7ab77d0ff03798201ccb66",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-08-12",
+      "topic_id": 224,
+      "topic_title": "Why AI Rollbacks Mean Progress, Not Failure",
+      "hook": "Google pulled an AI tool in hours. Here's why that's actually a win for the industry.",
+      "instagram_post_id": "6a7c0cb37a627506e0918b99",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a7c0cb97a627506e0918da6",
+      "youtube_metrics": null
     }
   ]
 }
