@@ -239,6 +239,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a8a815298b9505f48aec784",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-08-24",
+      "topic_id": 236,
+      "topic_title": "Why AI Agents Just Cracked Software Architecture",
+      "hook": "The next AI breakthrough won't be bigger models, it will be smarter software design patterns.",
+      "instagram_post_id": "6a8bd48cf1a6c32eb0220a00",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a8bd492d11c24440c545fed",
+      "youtube_metrics": null
     }
   ]
 }
