@@ -249,6 +249,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a8bd492d11c24440c545fed",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-08-25",
+      "topic_id": 237,
+      "topic_title": "Why AI Just Broke Into Nuclear Energy",
+      "hook": "Nvidia-backed AI tool is now powering nuclear reactors. Here's what that means for energy.",
+      "instagram_post_id": "6a8d249713ec32c35f770369",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a8d249e13ec32c35f77070d",
+      "youtube_metrics": null
     }
   ]
 }
