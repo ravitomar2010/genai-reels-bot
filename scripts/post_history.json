@@ -289,6 +289,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a91bda9299cca12d5e80ad6",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-08-29",
+      "topic_id": 241,
+      "topic_title": "Why AI Agents Just Entered the Operating Room",
+      "hook": "AI agents are now conducting real scientific experiments autonomously inside labs.",
+      "instagram_post_id": "6a92c1bcefc8310857e9dd20",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a92c1c3bc7600bd71a99c08",
+      "youtube_metrics": null
     }
   ]
 }
