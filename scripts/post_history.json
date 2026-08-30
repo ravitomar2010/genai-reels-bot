@@ -299,6 +299,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a92c1c3bc7600bd71a99c08",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-08-30",
+      "topic_id": 242,
+      "topic_title": "AI Just Learned to Run Lab Experiments Alone",
+      "hook": "Claude can now directly control lab machines and conduct scientific experiments without human intervention.",
+      "instagram_post_id": "6a9402669bbe6a3239c2cd8b",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a94026d03ced3b268c1fbc8",
+      "youtube_metrics": null
     }
   ]
 }
