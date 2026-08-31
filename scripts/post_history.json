@@ -309,6 +309,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a94026d03ced3b268c1fbc8",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-08-31",
+      "topic_id": 243,
+      "topic_title": "AI Agents Just Entered the Lab Alone",
+      "hook": "Claude can now control lab equipment directly without human intervention or approval needed.",
+      "instagram_post_id": "6a9561c76b75af75ef3aacca",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a9561cd6b75af75ef3aae0d",
+      "youtube_metrics": null
     }
   ]
 }
