@@ -339,6 +339,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a97e6bb73c228d22e1c434f",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-03",
+      "topic_id": 246,
+      "topic_title": "Why AI Just Cracked Agriculture's Biggest Problem",
+      "hook": "AI is solving crop failures before they happen using real-time soil and weather data.",
+      "instagram_post_id": "6a993aeed5e0d990cb4c8ce3",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a993af4af784ca788db3539",
+      "youtube_metrics": null
     }
   ]
 }
