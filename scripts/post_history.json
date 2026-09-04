@@ -349,6 +349,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a993af4af784ca788db3539",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-04",
+      "topic_id": 247,
+      "topic_title": "Why AI Just Cracked Personal Data Centers",
+      "hook": "Nvidia just made distributed AI computing free. Your laptop could become part of a global network.",
+      "instagram_post_id": "6a9a8a782f8f8d4f1ec32a6e",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a9a8a81dde77c7c85cdaaf5",
+      "youtube_metrics": null
     }
   ]
 }
