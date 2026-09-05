@@ -359,6 +359,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6a9a8a81dde77c7c85cdaaf5",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-05",
+      "topic_id": 248,
+      "topic_title": "Why AI Agents Just Entered Radiology",
+      "hook": "FDA just approved an AI that writes radiology reports faster than radiologists can review them.",
+      "instagram_post_id": "6a9bd456c937c278fbb7b4dd",
+      "instagram_metrics": null,
+      "youtube_post_id": "6a9bd45cc937c278fbb7b6e7",
+      "youtube_metrics": null
     }
   ]
 }
