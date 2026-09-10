@@ -409,6 +409,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6aa123c637c15bf60286435e",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-10",
+      "topic_id": 253,
+      "topic_title": "Why AI Just Cracked Math Proofs",
+      "hook": "OpenAI's new AI model solved Navier-Stokes equations. Here's what that actually means.",
+      "instagram_post_id": "6aa274af181da26dba1c3a29",
+      "instagram_metrics": null,
+      "youtube_post_id": "6aa274b77744821dcdc4729f",
+      "youtube_metrics": null
     }
   ]
 }
