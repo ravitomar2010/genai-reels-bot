@@ -449,6 +449,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6aa6716ebe5d2d9a3d80cc90",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-14",
+      "topic_id": 257,
+      "topic_title": "Why AI Just Beat Humans at Pure Math",
+      "hook": "OpenAI's math solver just solved equations mathematicians couldn't. Here's what that actually means.",
+      "instagram_post_id": "6aa7c8e39a7df350e4a386ff",
+      "instagram_metrics": null,
+      "youtube_post_id": "6aa7c8e9b8835d4cf15f0b6d",
+      "youtube_metrics": null
     }
   ]
 }
