@@ -459,6 +459,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6aa7c8e9b8835d4cf15f0b6d",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-15",
+      "topic_id": 258,
+      "topic_title": "Why AI Just Solved Navier-Stokes",
+      "hook": "AI just cracked one of math's hardest unsolved problems. Here's what changes next.",
+      "instagram_post_id": "6aa913161d8b8352767e7809",
+      "instagram_metrics": null,
+      "youtube_post_id": "6aa9131e1d8b8352767e7b5b",
+      "youtube_metrics": null
     }
   ]
 }
