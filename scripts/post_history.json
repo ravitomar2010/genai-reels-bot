@@ -569,6 +569,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ab6439899c4c9fe2d0ddf22",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-26",
+      "topic_id": 269,
+      "topic_title": "Why AI Just Entered Research Reproducibility",
+      "hook": "NIH just launched an AI tool that catches irreproducible research before it wastes millions.",
+      "instagram_post_id": "6ab790f80c19525e7ed7f732",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ab790ffaeebb6c914de7b15",
+      "youtube_metrics": null
     }
   ]
 }
