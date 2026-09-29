@@ -599,6 +599,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6aba4c8dabbaa0b01793819d",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-29",
+      "topic_id": 272,
+      "topic_title": "Why AI Agents Need Guardrails Now",
+      "hook": "Nvidia just released a tool to stop AI agents from going rogue. Here's what that means.",
+      "instagram_post_id": "6abb9a2b84d6b9d148017e48",
+      "instagram_metrics": null,
+      "youtube_post_id": "6abb9a35de5b46047aefb2e5",
+      "youtube_metrics": null
     }
   ]
 }
