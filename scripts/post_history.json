@@ -609,6 +609,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6abb9a35de5b46047aefb2e5",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-09-30",
+      "topic_id": 273,
+      "topic_title": "Why AI Agents Need Safety Guardrails Now",
+      "hook": "Agentic AI is moving faster than safety frameworks can keep up with today.",
+      "instagram_post_id": "6abce8bc9a4c7afbdf88903b",
+      "instagram_metrics": null,
+      "youtube_post_id": "6abce8c3b932b71b1a597476",
+      "youtube_metrics": null
     }
   ]
 }
