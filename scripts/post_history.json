@@ -679,6 +679,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ac4dd44fc7fb3386ccf06d8",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-07",
+      "topic_id": 280,
+      "topic_title": "Why AI Agents Need Kill Switches Now",
+      "hook": "OpenAI just scrapped a major AI model launch over safety concerns. Here's why control matters more than raw power.",
+      "instagram_post_id": "6ac62cb17308da02c39a5d3d",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ac62cb972b40d5b9353b89a",
+      "youtube_metrics": null
     }
   ]
 }
