@@ -689,6 +689,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ac62cb972b40d5b9353b89a",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-08",
+      "topic_id": 281,
+      "topic_title": "Why AI Just Entered Fake Detection",
+      "hook": "Google's new AI fake detector exists, but it might miss half the deepfakes anyway.",
+      "instagram_post_id": "6ac781aa1e2fd194b1ecbbc3",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ac781b232be1814abe02503",
+      "youtube_metrics": null
     }
   ]
 }
