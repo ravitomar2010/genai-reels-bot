@@ -719,6 +719,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6aca1966d4709c897322e634",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-11",
+      "topic_id": 284,
+      "topic_title": "Why AI Just Entered Robotics Manufacturing",
+      "hook": "Boston Dynamics just launched their fastest humanoid yet. Here's why your factory can't ignore it.",
+      "instagram_post_id": "6acb6e5c2ff4c925caa615c2",
+      "instagram_metrics": null,
+      "youtube_post_id": "6acb6e642ff4c925caa6166e",
+      "youtube_metrics": null
     }
   ]
 }
