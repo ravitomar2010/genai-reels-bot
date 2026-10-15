@@ -739,6 +739,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6acf5067cf0208c5c1612951",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-15",
+      "topic_id": 288,
+      "topic_title": "Why AI Healthcare Just Hit Critical Mass",
+      "hook": "Half of China's using generative AI in medicine right now, and agentic AI is doing the work doctors can't scale.",
+      "instagram_post_id": "6ad09ce29f253db565902289",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ad09ce9b0e0c02535cc34d3",
+      "youtube_metrics": null
     }
   ]
 }
