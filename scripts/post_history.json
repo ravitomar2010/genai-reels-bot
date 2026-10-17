@@ -759,6 +759,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ad1ed064ce9dac969eed8c6",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-17",
+      "topic_id": 290,
+      "topic_title": "Why AI Control Beats Raw Power Now",
+      "hook": "Gartner just revealed why agentic AI's next frontier is guardrails, not speed.",
+      "instagram_post_id": "6ad3368bd393f0abaf185188",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ad33691c2374c3ad92c4e29",
+      "youtube_metrics": null
     }
   ]
 }
