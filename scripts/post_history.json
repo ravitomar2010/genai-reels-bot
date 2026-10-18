@@ -769,6 +769,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ad33691c2374c3ad92c4e29",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-18",
+      "topic_id": 291,
+      "topic_title": "Why AI Control Beats Raw Power Now",
+      "hook": "Gartner just revealed: control architecture drives AI ROI more than model size in 2026.",
+      "instagram_post_id": "6ad48c88c14f4acc3fe8679c",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ad48c8e02dff79071e36ac2",
+      "youtube_metrics": null
     }
   ]
 }
