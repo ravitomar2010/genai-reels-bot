@@ -829,6 +829,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6adb2a53248e4ede3d11ffae",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-24",
+      "topic_id": 297,
+      "topic_title": "Why AI Agents Need Real Business Data Now",
+      "hook": "Walmart's AI agents just learned to shop. The catch? They need your actual business data to scale.",
+      "instagram_post_id": "6adc75b9c5dc187551a50131",
+      "instagram_metrics": null,
+      "youtube_post_id": "6adc75c0c5dc187551a50169",
+      "youtube_metrics": null
     }
   ]
 }
