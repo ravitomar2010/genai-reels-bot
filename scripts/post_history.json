@@ -839,6 +839,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6adc75c0c5dc187551a50169",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-25",
+      "topic_id": 298,
+      "topic_title": "Why AI Memory Just Became The Bottleneck",
+      "hook": "AI agents are getting smarter, but your hardware can't keep them cool enough.",
+      "instagram_post_id": "6addcab929570067880dd041",
+      "instagram_metrics": null,
+      "youtube_post_id": "6addcabf29570067880dd066",
+      "youtube_metrics": null
     }
   ]
 }
