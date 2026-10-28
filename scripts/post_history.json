@@ -869,6 +869,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ae076f45a39fccffc88898c",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-28",
+      "topic_id": 301,
+      "topic_title": "Why AI Nutrition Labels Just Changed Everything",
+      "hook": "MIT just released AI Nutrition Labels. Here's why every developer needs to understand this framework now.",
+      "instagram_post_id": "6ae1d2c93813ac0f8c6030c0",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ae1d2cf3813ac0f8c603109",
+      "youtube_metrics": null
     }
   ]
 }
