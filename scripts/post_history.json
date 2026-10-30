@@ -889,6 +889,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ae328acd9832721d456dd37",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-30",
+      "topic_id": 303,
+      "topic_title": "Why AI Spending Visibility Just Became Critical",
+      "hook": "Most companies have no idea what their AI spending actually returns. Anthropic just changed that.",
+      "instagram_post_id": "6ae47ab65291771f6222cf33",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ae47abc5291771f6222cf4f",
+      "youtube_metrics": null
     }
   ]
 }
