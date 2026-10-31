@@ -899,6 +899,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ae47abc5291771f6222cf4f",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-10-31",
+      "topic_id": 304,
+      "topic_title": "Why AI Context Windows Just Hit The Wall",
+      "hook": "Longer context windows don't solve reasoning depth. That's the real bottleneck now.",
+      "instagram_post_id": "6ae5c4f828ea0910aa75038e",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ae5c4fe28ea0910aa7503a2",
+      "youtube_metrics": null
     }
   ]
 }
