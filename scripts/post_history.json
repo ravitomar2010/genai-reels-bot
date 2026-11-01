@@ -909,6 +909,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6ae5c4fe28ea0910aa7503a2",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-01",
+      "topic_id": 305,
+      "topic_title": "Why AI Coding Tools Just Changed Everything",
+      "hook": "Meta's new AI coding tool powered by Muse Spark 1.2 just rewrote how developers build software.",
+      "instagram_post_id": "6ae722e10b14bd9575cdf18d",
+      "instagram_metrics": null,
+      "youtube_post_id": "6ae722e90b14bd9575cdf1dc",
+      "youtube_metrics": null
     }
   ]
 }
