@@ -949,6 +949,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6aeb24bf1f9c9f7053194a9d",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-05",
+      "topic_id": 309,
+      "topic_title": "Why AI Just Entered Healthcare Claims Processing",
+      "hook": "Athenahealth just plugged Claude directly into patient records. That's not just integration, that's the end of manual claims.",
+      "instagram_post_id": "6aec7994db053ac16fb4ee97",
+      "instagram_metrics": null,
+      "youtube_post_id": "6aec799cdb053ac16fb4eefb",
+      "youtube_metrics": null
     }
   ]
 }
