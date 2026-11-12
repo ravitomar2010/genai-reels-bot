@@ -1019,6 +1019,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6af45a77e7bd83cadc27f1bf",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-12",
+      "topic_id": 316,
+      "topic_title": "Why AI Agents Just Entered Office Productivity",
+      "hook": "Anthropic's new office tools signal agentic AI is leaving research labs and entering your daily workflow.",
+      "instagram_post_id": "6af5ba347ea536a54eb5a986",
+      "instagram_metrics": null,
+      "youtube_post_id": "6af5ba397ea536a54eb5a9a1",
+      "youtube_metrics": null
     }
   ]
 }
