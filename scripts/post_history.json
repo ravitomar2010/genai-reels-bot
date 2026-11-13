@@ -1029,6 +1029,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6af5ba397ea536a54eb5a9a1",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-13",
+      "topic_id": 317,
+      "topic_title": "Why AI Just Entered Unhackable Software",
+      "hook": "Google's AI breakthrough makes hacking exponentially harder. Here's what developers need to know.",
+      "instagram_post_id": "6af702e04c1fc8995c023e49",
+      "instagram_metrics": null,
+      "youtube_post_id": "6af702e6567a4714ff84286b",
+      "youtube_metrics": null
     }
   ]
 }
