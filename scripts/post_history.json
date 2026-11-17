@@ -1069,6 +1069,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6afb01176605f1071235341a",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-17",
+      "topic_id": 321,
+      "topic_title": "Why AI Just Entered Health Prediction",
+      "hook": "AI can now identify Alzheimer's risk years before symptoms show up.",
+      "instagram_post_id": "6afc5ac5b1af8027eff93b1b",
+      "instagram_metrics": null,
+      "youtube_post_id": "6afc5acb21432f3235ae7440",
+      "youtube_metrics": null
     }
   ]
 }
