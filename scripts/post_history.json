@@ -1119,6 +1119,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6b01960aee0f34a97e08f9a7",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-22",
+      "topic_id": 326,
+      "topic_title": "Why AI Just Entered Legal Document Review",
+      "hook": "AI agents now review contracts faster than human lawyers and catch clauses humans miss.",
+      "instagram_post_id": "6b02e567f975416d4984caa3",
+      "instagram_metrics": null,
+      "youtube_post_id": "6b02e56cf975416d4984cacc",
+      "youtube_metrics": null
     }
   ]
 }
