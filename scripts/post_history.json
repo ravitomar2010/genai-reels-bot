@@ -1129,6 +1129,16 @@
       "instagram_metrics": null,
       "youtube_post_id": "6b02e56cf975416d4984cacc",
       "youtube_metrics": null
+    },
+    {
+      "date": "2026-11-23",
+      "topic_id": 327,
+      "topic_title": "Why AI Just Solved A 167-Year Math Problem",
+      "hook": "Claude just cracked the Riemann Hypothesis. Here's what that means for AI.",
+      "instagram_post_id": "6b04595e101578be2ee4a128",
+      "instagram_metrics": null,
+      "youtube_post_id": "6b045964e17024f29b53bbfd",
+      "youtube_metrics": null
     }
   ]
 }
